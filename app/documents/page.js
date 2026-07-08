@@ -9,6 +9,7 @@ const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal
 
 export default function DocumentsPage() {
   const [files, setFiles] = useState([])
+  const [isAdmin, setIsAdmin] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [user, setUser] = useState(null)
   const [activeCategory, setActiveCategory] = useState('Personal')
@@ -27,9 +28,23 @@ export default function DocumentsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       router.push('/login')
-    } else {
-      setUser(user)
+      return
     }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('approved, is_admin')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || !profile.approved) {
+      await supabase.auth.signOut()
+      router.push('/login')
+      return
+    }
+
+    setIsAdmin(profile.is_admin)
+    setUser(user)
   }
 
   const loadFiles = async () => {
@@ -163,12 +178,22 @@ export default function DocumentsPage() {
             />
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
-          >
-            Log Out
-          </button>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => router.push('/admin')}
+                className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+              >
+                Admin
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+            >
+              Log Out
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
