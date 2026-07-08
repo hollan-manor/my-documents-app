@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { Download, Trash2 } from 'lucide-react'
 
-const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Other']
+const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
 export default function DocumentsPage() {
   const [files, setFiles] = useState([])
@@ -47,8 +48,6 @@ export default function DocumentsPage() {
 
     setUploading(true)
 
-    // Files live inside a folder named after the user's own ID —
-    // this is what keeps everyone's files private
     const filePath = `${user.id}/${Date.now()}_${file.name}`
 
     const { error: uploadError } = await supabase.storage
@@ -98,6 +97,32 @@ export default function DocumentsPage() {
     link.click()
   }
 
+  const handleDelete = async (fileId, filePath, fileName) => {
+    const confirmed = window.confirm(`Delete "${fileName}"? This can't be undone.`)
+    if (!confirmed) return
+
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([filePath])
+
+    if (storageError) {
+      alert('Could not delete file: ' + storageError.message)
+      return
+    }
+
+    const { error: dbError } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', fileId)
+
+    if (dbError) {
+      alert('Could not delete record: ' + dbError.message)
+      return
+    }
+
+    loadFiles()
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
@@ -128,7 +153,7 @@ export default function DocumentsPage() {
               disabled={uploading}
               className="px-5 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all shadow-lg disabled:opacity-60"
             >
-              {uploading ? 'Uploading...' : '+ Upload Docs'}
+              {uploading ? 'Uploading...' : '+ Upload'}
             </button>
             <input
               ref={fileInputRef}
@@ -175,12 +200,22 @@ export default function DocumentsPage() {
                   className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-3"
                 >
                   <span className="text-white truncate">{file.file_name}</span>
-                  <button
-                    onClick={() => handleDownload(file.file_path, file.file_name)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-white/20 hover:bg-white/30 transition-all"
-                  >
-                    Download
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDelete(file.id, file.file_path, file.file_name)}
+                      title="Delete"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 text-white transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDownload(file.file_path, file.file_name)}
+                      title="Download"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white transition-all"
+                    >
+                      <Download size={16} />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
