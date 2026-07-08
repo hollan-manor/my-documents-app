@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
@@ -11,7 +11,24 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [installPrompt, setInstallPrompt] = useState(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    await installPrompt.userChoice
+    setInstallPrompt(null)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -30,7 +47,6 @@ export default function LoginPage() {
       return
     }
 
-    // Check approval status before letting them in
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('approved')
@@ -83,6 +99,15 @@ export default function LoginPage() {
         backgroundPosition: 'center',
       }}
     >
+      {installPrompt && (
+        <button
+          onClick={handleInstallClick}
+          className="fixed top-4 right-4 px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+        >
+          Install App
+        </button>
+      )}
+
       <div className="w-full max-w-sm bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-8">
         <h1 className="text-3xl font-bold text-white text-center mb-1">
           {mode === 'login' ? 'Welcome Back' : 'Create Account'}
