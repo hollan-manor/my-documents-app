@@ -99,17 +99,21 @@ export default function DocumentsPage() {
   const handleDownload = async (filePath, fileName) => {
     const { data, error } = await supabase.storage
       .from('documents')
-      .createSignedUrl(filePath, 60)
+      .download(filePath)
 
     if (error) {
-      alert('Could not get download link: ' + error.message)
+      alert('Could not download file: ' + error.message)
       return
     }
 
+    const url = URL.createObjectURL(data)
     const link = document.createElement('a')
-    link.href = data.signedUrl
+    link.href = url
     link.download = fileName
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const handleDelete = async (fileId, filePath, fileName) => {
