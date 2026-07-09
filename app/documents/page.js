@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { Download, Trash2 } from 'lucide-react'
+import { MoreVertical, Eye, Download, Trash2 } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
@@ -13,6 +13,7 @@ export default function DocumentsPage() {
   const [uploading, setUploading] = useState(false)
   const [user, setUser] = useState(null)
   const [activeCategory, setActiveCategory] = useState('Personal')
+  const [openMenuId, setOpenMenuId] = useState(null)
   const fileInputRef = useRef(null)
   const router = useRouter()
 
@@ -23,6 +24,12 @@ export default function DocumentsPage() {
   useEffect(() => {
     if (user) loadFiles()
   }, [activeCategory, user])
+
+  useEffect(() => {
+    const closeMenu = () => setOpenMenuId(null)
+    window.addEventListener('click', closeMenu)
+    return () => window.removeEventListener('click', closeMenu)
+  }, [])
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -94,6 +101,19 @@ export default function DocumentsPage() {
 
     setUploading(false)
     e.target.value = ''
+  }
+
+  const handleOpen = async (filePath) => {
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(filePath, 60)
+
+    if (error) {
+      alert('Could not open file: ' + error.message)
+      return
+    }
+
+    window.open(data.signedUrl, '_blank')
   }
 
   const handleDownload = async (filePath, fileName) => {
@@ -226,10 +246,19 @@ export default function DocumentsPage() {
               {files.map((file) => (
                 <li
                   key={file.id}
-                  className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-3"
+                  className="relative flex items-center justify-between gap-2 bg-white/10 rounded-xl px-4 py-3"
                 >
-                  <span className="text-white truncate">{file.file_name}</span>
-                  <div className="flex items-center gap-2">
+                  <span className="text-white truncate min-w-0">{file.file_name}</span>
+
+                  {/* Desktop: icon buttons, always visible */}
+                  <div className="hidden md:flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleOpen(file.file_path)}
+                      title="Open"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all"
+                    >
+                      <Eye size={16} />
+                    </button>
                     <button
                       onClick={() => handleDelete(file.id, file.file_path, file.file_name)}
                       title="Delete"
@@ -245,6 +274,43 @@ export default function DocumentsPage() {
                       <Download size={16} />
                     </button>
                   </div>
+
+                  {/* Mobile: three-dot menu */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setOpenMenuId(openMenuId === file.id ? null : file.id)
+                    }}
+                    className="md:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+
+                  {openMenuId === file.id && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="md:hidden absolute right-4 top-14 z-10 w-40 bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden"
+                    >
+                      <button
+                        onClick={() => { handleOpen(file.file_path); setOpenMenuId(null) }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10 transition-all"
+                      >
+                        <Eye size={16} /> Open
+                      </button>
+                      <button
+                        onClick={() => { handleDownload(file.file_path, file.file_name); setOpenMenuId(null) }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10 transition-all"
+                      >
+                        <Download size={16} /> Download
+                      </button>
+                      <button
+                        onClick={() => { handleDelete(file.id, file.file_path, file.file_name); setOpenMenuId(null) }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition-all"
+                      >
+                        <Trash2 size={16} /> Delete
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
