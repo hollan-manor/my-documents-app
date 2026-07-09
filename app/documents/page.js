@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { MoreVertical, Eye, Download, Trash2 } from 'lucide-react'
+import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
@@ -14,6 +14,7 @@ export default function DocumentsPage() {
   const [user, setUser] = useState(null)
   const [activeCategory, setActiveCategory] = useState('Personal')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
   const fileInputRef = useRef(null)
   const router = useRouter()
 
@@ -26,9 +27,12 @@ export default function DocumentsPage() {
   }, [activeCategory, user])
 
   useEffect(() => {
-    const closeMenu = () => setOpenMenuId(null)
-    window.addEventListener('click', closeMenu)
-    return () => window.removeEventListener('click', closeMenu)
+    const closeMenus = () => {
+      setOpenMenuId(null)
+      setCategoryMenuOpen(false)
+    }
+    window.addEventListener('click', closeMenus)
+    return () => window.removeEventListener('click', closeMenus)
   }, [])
 
   const checkUser = async () => {
@@ -183,7 +187,7 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-8" style={bgStyle}>
+    <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -211,16 +215,18 @@ export default function DocumentsPage() {
                 Admin
               </button>
             )}
+            {/* Desktop Log Out — stays top-right, now red */}
             <button
               onClick={handleLogout}
-              className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+              className="hidden md:block px-4 py-2 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 transition-all"
             >
               Log Out
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
+        {/* Desktop: full category row */}
+        <div className="hidden md:flex flex-wrap gap-2 mb-6">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -234,6 +240,44 @@ export default function DocumentsPage() {
               {cat}
             </button>
           ))}
+        </div>
+
+        {/* Mobile: single Categories dropdown */}
+        <div className="md:hidden relative mb-6">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setCategoryMenuOpen(!categoryMenuOpen)
+            }}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-indigo-500 to-pink-500 shadow-lg"
+          >
+            <span>Categories: {activeCategory}</span>
+            <ChevronDown size={18} className={`transition-transform ${categoryMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {categoryMenuOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute left-0 right-0 mt-2 z-20 bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
+            >
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setActiveCategory(cat)
+                    setCategoryMenuOpen(false)
+                  }}
+                  className={`w-full text-left px-4 py-3 text-sm transition-all ${
+                    activeCategory === cat
+                      ? 'bg-indigo-600 text-white font-semibold'
+                      : 'text-white hover:bg-white/10'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6">
@@ -317,6 +361,15 @@ export default function DocumentsPage() {
           )}
         </div>
       </div>
+
+      {/* Mobile: fixed Log Out button, bottom-left, red */}
+      <button
+        onClick={handleLogout}
+        className="md:hidden fixed bottom-4 left-4 flex items-center gap-2 px-4 py-3 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg transition-all z-30"
+      >
+        <LogOut size={18} />
+        Log Out
+      </button>
     </div>
   )
 }
