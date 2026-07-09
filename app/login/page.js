@@ -4,170 +4,180 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-export default function AdminPage() {
-  const [pendingUsers, setPendingUsers] = useState([])
-  const [allUsers, setAllUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
+export default function LoginPage() {
+  const [mode, setMode] = useState('login') // 'login' or 'signup'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [installPrompt, setInstallPrompt] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
-    checkAdminAndLoad()
+    const handler = (e) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  const checkAdminAndLoad = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
+  const handleInstallClick = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    await installPrompt.userChoice
+    setInstallPrompt(null)
+  }
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
       return
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
+      .select('approved')
+      .eq('id', data.user.id)
       .single()
 
-    if (!profile || !profile.is_admin) {
-      router.push('/documents')
+    setLoading(false)
+
+    if (profileError || !profile) {
+      setError('Could not verify account status.')
       return
     }
 
-    setIsAdmin(true)
-    await loadUsers()
+    if (!profile.approved) {
+      await supabase.auth.signOut()
+      setError('Your account is pending approval. Please check back later.')
+      return
+    }
+
+    router.push('/documents')
+  }
+
+  const handleSignup = async (e) => {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
     setLoading(false)
-  }
-
-  const loadUsers = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (!error && data) {
-      setAllUsers(data)
-      setPendingUsers(data.filter((u) => !u.approved))
-    }
-  }
-
-  const handleApprove = async (userId) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ approved: true })
-      .eq('id', userId)
 
     if (error) {
-      alert('Could not approve: ' + error.message)
+      setError(error.message)
     } else {
-      loadUsers()
+      setMessage('Account created! It must be approved before you can log in.')
+      setMode('login')
     }
   }
-
-  const handleRevoke = async (userId) => {
-    const confirmed = window.confirm('Revoke this user\'s access?')
-    if (!confirmed) return
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ approved: false })
-      .eq('id', userId)
-
-    if (error) {
-      alert('Could not revoke: ' + error.message)
-    } else {
-      loadUsers()
-    }
-  }
-
-  const bgStyle = {
-    backgroundImage: "url('/triangles-bg.svg')",
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
-        <p className="text-white text-lg">Loading...</p>
-      </div>
-    )
-  }
-
-  if (!isAdmin) return null
 
   return (
-    <div className="min-h-screen px-4 py-8" style={bgStyle}>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white">Admin</h1>
-          <button
-            onClick={() => router.push('/documents')}
-            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
-          >
-            Back to Documents
-          </button>
-        </div>
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        backgroundImage: "url('/triangles-bg.svg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {installPrompt && (
+        <button
+          onClick={handleInstallClick}
+          className="fixed top-4 right-4 px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+        >
+          Install App
+        </button>
+      )}
 
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">
-            Pending Approval ({pendingUsers.length})
-          </h2>
+      <div className="w-full max-w-sm bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-8">
+        <h1 className="text-3xl font-bold text-white text-center mb-1">
+          {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+        </h1>
+        <p className="text-white/70 text-center mb-6">
+          {mode === 'login' ? 'Log in to access your documents' : 'Request access to the platform'}
+        </p>
 
-          {pendingUsers.length === 0 ? (
-            <p className="text-white/70">No pending requests.</p>
-          ) : (
-            <ul className="space-y-2">
-              {pendingUsers.map((u) => (
-                <li
-                  key={u.id}
-                  className="flex items-center justify-between gap-3 bg-white/10 rounded-xl px-4 py-3"
-                >
-                  <span className="text-white truncate min-w-0">{u.email}</span>
-                  <button
-                    onClick={() => handleApprove(u.id)}
-                    className="shrink-0 px-4 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all"
-                  >
-                    Approve
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            required
+            minLength={6}
+          />
+
+          {error && (
+            <p className="text-red-300 text-sm bg-red-900/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
           )}
-        </div>
+          {message && (
+            <p className="text-green-300 text-sm bg-green-900/30 rounded-lg px-3 py-2">
+              {message}
+            </p>
+          )}
 
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4">All Users</h2>
-          <ul className="space-y-2">
-            {allUsers.map((u) => (
-              <li
-                key={u.id}
-                className="flex items-center justify-between gap-3 bg-white/10 rounded-xl px-4 py-3"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all shadow-lg disabled:opacity-60"
+          >
+            {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Sign Up'}
+          </button>
+        </form>
+
+        <p className="text-white/70 text-center text-sm mt-4">
+          {mode === 'login' ? (
+            <>
+              Don&apos;t have an account?{' '}
+              <button
+                onClick={() => { setMode('signup'); setError(''); setMessage('') }}
+                className="text-indigo-300 font-medium hover:underline"
               >
-                <div className="min-w-0 flex items-center gap-2">
-                  <span className="text-white truncate">{u.email}</span>
-                  {u.is_admin && (
-                    <span className="shrink-0 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full">
-                      Admin
-                    </span>
-                  )}
-                </div>
-                {u.approved ? (
-                  !u.is_admin && (
-                    <button
-                      onClick={() => handleRevoke(u.id)}
-                      className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all"
-                    >
-                      Revoke
-                    </button>
-                  )
-                ) : (
-                  <span className="shrink-0 text-yellow-300 text-sm">Pending</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{' '}
+              <button
+                onClick={() => { setMode('login'); setError(''); setMessage('') }}
+                className="text-indigo-300 font-medium hover:underline"
+              >
+                Log in
+              </button>
+            </>
+          )}
+        </p>
       </div>
     </div>
   )
