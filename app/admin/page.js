@@ -121,12 +121,12 @@ export default function AdminPage() {
               {pendingUsers.map((u) => (
                 <li
                   key={u.id}
-                  className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-3"
+                  className="flex items-center justify-between gap-3 bg-white/10 rounded-xl px-4 py-3"
                 >
-                  <span className="text-white">{u.email}</span>
+                  <span className="text-white truncate min-w-0">{u.email}</span>
                   <button
                     onClick={() => handleApprove(u.id)}
-                    className="px-4 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all"
+                    className="shrink-0 px-4 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all"
                   >
                     Approve
                   </button>
@@ -142,12 +142,12 @@ export default function AdminPage() {
             {allUsers.map((u) => (
               <li
                 key={u.id}
-                className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-3"
+                className="flex items-center justify-between gap-3 bg-white/10 rounded-xl px-4 py-3"
               >
-                <div>
-                  <span className="text-white">{u.email}</span>
+                <div className="min-w-0 flex items-center gap-2">
+                  <span className="text-white truncate">{u.email}</span>
                   {u.is_admin && (
-                    <span className="ml-2 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full">
+                    <span className="shrink-0 text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full">
                       Admin
                     </span>
                   )}
@@ -156,13 +156,13 @@ export default function AdminPage() {
                   !u.is_admin && (
                     <button
                       onClick={() => handleRevoke(u.id)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all"
+                      className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-all"
                     >
                       Revoke
                     </button>
                   )
                 ) : (
-                  <span className="text-yellow-300 text-sm">Pending</span>
+                  <span className="shrink-0 text-yellow-300 text-sm">Pending</span>
                 )}
               </li>
             ))}
