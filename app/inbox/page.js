@@ -7,6 +7,24 @@ import { MoreVertical, Eye, Download, Trash2, FolderInput, ArrowLeft } from 'luc
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
+function formatSentDate(dateString) {
+  const date = new Date(dateString)
+  const day = date.getDate()
+  const suffix =
+    day % 10 === 1 && day !== 11 ? 'st' :
+    day % 10 === 2 && day !== 12 ? 'nd' :
+    day % 10 === 3 && day !== 13 ? 'rd' : 'th'
+
+  const month = date.toLocaleString('en-US', { month: 'long' })
+  let hours = date.getHours()
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const ampm = hours >= 12 ? 'pm' : 'am'
+  hours = hours % 12
+  if (hours === 0) hours = 12
+
+  return `${month} ${day}${suffix} ${hours}.${minutes}${ampm}`
+}
+
 export default function InboxPage() {
   const [files, setFiles] = useState([])
   const [user, setUser] = useState(null)
@@ -186,7 +204,9 @@ export default function InboxPage() {
                   <div className="min-w-0">
                     <p className="text-white truncate">{file.file_name}</p>
                     {file.shared_from && (
-                      <p className="text-white/50 text-xs truncate">From: {file.shared_from}</p>
+                      <p className="text-white/50 text-xs truncate">
+                        From: {file.shared_from} · {formatSentDate(file.created_at)}
+                      </p>
                     )}
                   </div>
 

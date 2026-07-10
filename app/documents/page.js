@@ -30,6 +30,19 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     checkUser()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadInboxCount()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', loadInboxCount)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', loadInboxCount)
+    }
   }, [])
 
   useEffect(() => {
