@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
+const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
 
 export default function DocumentsPage() {
   const [files, setFiles] = useState([])
@@ -27,6 +28,8 @@ export default function DocumentsPage() {
 
   const fileInputRef = useRef(null)
   const router = useRouter()
+
+  const isSpecialAdmin = user?.email === SPECIAL_ADMIN_EMAIL
 
   useEffect(() => {
     checkUser()
@@ -255,11 +258,13 @@ export default function DocumentsPage() {
   }
 
   const bgStyle = {
-    backgroundImage: "url('/triangles-bg.svg')",
+    backgroundImage: isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')",
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed',
   }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
 
   if (!user) {
     return (
@@ -372,7 +377,7 @@ export default function DocumentsPage() {
 
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-white">{activeCategory} Documents</h1>
+            <h1 className={`text-2xl font-bold ${titleColorClass}`}>{activeCategory} Documents</h1>
             {selectionMode && (
               <button
                 onClick={exitSelectionMode}
@@ -409,7 +414,12 @@ export default function DocumentsPage() {
                         )}
                       </button>
                     )}
-                    <span className="text-white truncate min-w-0">{file.file_name}</span>
+                    <span
+                      className="text-white truncate min-w-0"
+                      style={isSpecialAdmin ? { color: '#E8C468' } : undefined}
+                    >
+                      {file.file_name}
+                    </span>
                   </div>
 
                   {!selectionMode && (

@@ -4,12 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
+const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
+
 export default function AdminPage() {
   const [pendingUsers, setPendingUsers] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
   const router = useRouter()
+
+  const isSpecialAdmin = userEmail === SPECIAL_ADMIN_EMAIL
 
   useEffect(() => {
     checkAdminAndLoad()
@@ -34,6 +39,7 @@ export default function AdminPage() {
     }
 
     setIsAdmin(true)
+    setUserEmail(user.email)
     await loadUsers()
     setLoading(false)
   }
@@ -80,11 +86,13 @@ export default function AdminPage() {
   }
 
   const bgStyle = {
-    backgroundImage: "url('/triangles-bg.svg')",
+    backgroundImage: isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')",
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed',
   }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
 
   if (loading) {
     return (
@@ -100,7 +108,7 @@ export default function AdminPage() {
     <div className="min-h-screen px-4 py-8" style={bgStyle}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white">Admin</h1>
+          <h1 className={`text-3xl font-bold ${titleColorClass}`}>Admin</h1>
           <button
             onClick={() => router.push('/documents')}
             className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"

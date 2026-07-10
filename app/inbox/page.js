@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, FolderInput, ArrowLeft } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
+const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
 
 function formatSentDate(dateString) {
   const date = new Date(dateString)
@@ -54,6 +55,8 @@ export default function InboxPage() {
   const [user, setUser] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [moveMenuId, setMoveMenuId] = useState(null)
+
+  const isSpecialAdmin = user?.email === SPECIAL_ADMIN_EMAIL
 
   useEffect(() => {
     checkUser()
@@ -192,11 +195,13 @@ export default function InboxPage() {
   }
 
   const bgStyle = {
-    backgroundImage: "url('/triangles-bg.svg')",
+    backgroundImage: isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')",
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed',
   }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
 
   if (!user) {
     return (
@@ -212,7 +217,7 @@ export default function InboxPage() {
     <div className="min-h-screen px-4 py-8" style={bgStyle}>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className={`text-3xl font-bold flex items-center gap-3 ${titleColorClass}`}>
             <button
               onClick={() => { window.location.href = '/documents' }}
               className="w-10 h-10 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
@@ -245,16 +250,19 @@ export default function InboxPage() {
                       className="relative flex items-center justify-between gap-2 bg-white/10 rounded-xl px-4 py-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-white truncate">{file.file_name}</p>
+                        <p
+                          className="text-white truncate"
+                          style={isSpecialAdmin ? { color: '#E8C468' } : undefined}
+                        >
+                          {file.file_name}
+                        </p>
 
-                        {/* Desktop: unchanged, single line */}
                         {file.shared_from && (
                           <p className="hidden md:block text-white/50 text-xs truncate">
                             From: {file.shared_from} · <span className="text-green-400">{formatSentDate(file.created_at)}</span>
                           </p>
                         )}
 
-                        {/* Mobile: email on its own line, day/time in green below */}
                         {file.shared_from && (
                           <div className="md:hidden text-white/50 text-xs">
                             <p className="truncate">From: {file.shared_from}</p>
