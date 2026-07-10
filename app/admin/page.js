@@ -12,9 +12,17 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userEmail, setUserEmail] = useState('')
+
+  // Read the last-known theme immediately, before the real check finishes,
+  // so the loading screen doesn't flash the wrong background
+  const [themeGuess] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem('isSpecialAdmin') === 'true'
+  })
+
   const router = useRouter()
 
-  const isSpecialAdmin = userEmail === SPECIAL_ADMIN_EMAIL
+  const isSpecialAdmin = userEmail ? userEmail === SPECIAL_ADMIN_EMAIL : themeGuess
 
   useEffect(() => {
     checkAdminAndLoad()
@@ -40,6 +48,7 @@ export default function AdminPage() {
 
     setIsAdmin(true)
     setUserEmail(user.email)
+    sessionStorage.setItem('isSpecialAdmin', (user.email === SPECIAL_ADMIN_EMAIL).toString())
     await loadUsers()
     setLoading(false)
   }
