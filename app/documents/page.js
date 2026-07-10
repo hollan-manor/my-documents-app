@@ -15,6 +15,7 @@ export default function DocumentsPage() {
   const [activeCategory, setActiveCategory] = useState('Personal')
   const [openMenuId, setOpenMenuId] = useState(null)
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
+  const [inboxCount, setInboxCount] = useState(0)
 
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
@@ -65,6 +66,16 @@ export default function DocumentsPage() {
 
     setIsAdmin(profile.is_admin)
     setUser(user)
+    loadInboxCount()
+  }
+
+  const loadInboxCount = async () => {
+    const { count, error } = await supabase
+      .from('documents')
+      .select('*', { count: 'exact', head: true })
+      .eq('category', 'Inbox')
+
+    if (!error) setInboxCount(count || 0)
   }
 
   const loadFiles = async () => {
@@ -199,7 +210,6 @@ export default function DocumentsPage() {
     setSendSuccess('')
 
     for (const fileId of selectedIds) {
-      // Step 1: validate + get paths via the secure function
       const { data: result, error: fnError } = await supabase.rpc('share_document', {
         doc_id: fileId,
         recipient_email: recipientEmail,
@@ -211,7 +221,6 @@ export default function DocumentsPage() {
         return
       }
 
-      // Step 2: actually copy the file bytes in storage
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('documents')
         .download(result.source_path)
@@ -280,9 +289,14 @@ export default function DocumentsPage() {
             <button
               onClick={() => router.push('/inbox')}
               title="Inbox"
-              className="w-11 h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+              className="relative w-11 h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
             >
               <Inbox size={18} />
+              {inboxCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
+                  {inboxCount > 99 ? '99+' : inboxCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -469,7 +483,6 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* Share button, bottom-right */}
       {!selectionMode && (
         <button
           onClick={() => setSelectionMode(true)}
@@ -480,7 +493,6 @@ export default function DocumentsPage() {
         </button>
       )}
 
-      {/* Send button, appears once files are selected */}
       {selectionMode && selectedIds.length > 0 && (
         <button
           onClick={() => setSendDialogOpen(true)}
@@ -490,7 +502,6 @@ export default function DocumentsPage() {
         </button>
       )}
 
-      {/* Mobile Log Out, bottom-left, red */}
       <button
         onClick={handleLogout}
         className="md:hidden fixed bottom-4 left-4 flex items-center gap-2 px-4 py-3 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 shadow-lg transition-all z-30"
@@ -499,7 +510,6 @@ export default function DocumentsPage() {
         Log Out
       </button>
 
-      {/* Send dialog */}
       {sendDialogOpen && (
         <div
           className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50"
