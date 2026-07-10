@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, FolderInput, ArrowLeft } from 'lucide-react'
 
@@ -16,13 +15,14 @@ function formatSentDate(dateString) {
     day % 10 === 3 && day !== 13 ? 'rd' : 'th'
 
   const month = date.toLocaleString('en-US', { month: 'long' })
+  const year = date.getFullYear().toString().slice(-2)
   let hours = date.getHours()
   const minutes = date.getMinutes().toString().padStart(2, '0')
   const ampm = hours >= 12 ? 'pm' : 'am'
   hours = hours % 12
   if (hours === 0) hours = 12
 
-  return `${month} ${day}${suffix} ${hours}.${minutes}${ampm}`
+  return `${month} ${day}${suffix} ${hours}.${minutes}${ampm} '${year}`
 }
 
 export default function InboxPage() {
@@ -30,7 +30,6 @@ export default function InboxPage() {
   const [user, setUser] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [moveMenuId, setMoveMenuId] = useState(null)
-  const router = useRouter()
 
   useEffect(() => {
     checkUser()
@@ -48,7 +47,7 @@ export default function InboxPage() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      router.push('/login')
+      window.location.href = '/login'
       return
     }
 
@@ -60,7 +59,7 @@ export default function InboxPage() {
 
     if (!profile || !profile.approved) {
       await supabase.auth.signOut()
-      router.push('/login')
+      window.location.href = '/login'
       return
     }
 
@@ -182,7 +181,7 @@ export default function InboxPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <button
-              onClick={() => router.push('/documents')}
+              onClick={() => { window.location.href = '/documents' }}
               className="w-10 h-10 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
             >
               <ArrowLeft size={18} />
