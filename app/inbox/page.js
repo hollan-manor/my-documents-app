@@ -235,7 +235,6 @@ export default function InboxPage() {
 
                 return (
                   <div key={file.id}>
-                    {/* Month header — mobile only, shown once per month group */}
                     {showMonthHeader && monthYear && (
                       <p className="md:hidden text-white/40 text-xs font-semibold uppercase tracking-wide pt-2 pb-1 first:pt-0">
                         {monthYear}
@@ -251,15 +250,16 @@ export default function InboxPage() {
                         {/* Desktop: unchanged, single line */}
                         {file.shared_from && (
                           <p className="hidden md:block text-white/50 text-xs truncate">
-                            From: {file.shared_from} · {formatSentDate(file.created_at)}
+                            From: {file.shared_from} · <span className="text-green-400">{formatSentDate(file.created_at)}</span>
                           </p>
                         )}
 
-                        {/* Mobile: From + day/time only (month shown in header above) */}
+                        {/* Mobile: email on its own line, day/time in green below */}
                         {file.shared_from && (
-                          <p className="md:hidden text-white/50 text-xs truncate">
-                            From: {file.shared_from} · {getDayTime(file.created_at)}
-                          </p>
+                          <div className="md:hidden text-white/50 text-xs">
+                            <p className="truncate">From: {file.shared_from}</p>
+                            <p className="text-green-400">{getDayTime(file.created_at)}</p>
+                          </div>
                         )}
                       </div>
 
