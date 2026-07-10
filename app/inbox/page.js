@@ -74,15 +74,22 @@ export default function InboxPage() {
       .eq('category', 'Inbox')
       .order('created_at', { ascending: false })
 
-    if (!error) {
-      setFiles(data)
+    if (error) {
+      console.error('Failed to load inbox:', error.message)
+      return
+    }
 
-      const unreadIds = data.filter((f) => !f.is_read).map((f) => f.id)
-      if (unreadIds.length > 0) {
-        await supabase
-          .from('documents')
-          .update({ is_read: true })
-          .in('id', unreadIds)
+    setFiles(data)
+
+    const unreadIds = data.filter((f) => !f.is_read).map((f) => f.id)
+    if (unreadIds.length > 0) {
+      const { error: markReadError } = await supabase
+        .from('documents')
+        .update({ is_read: true })
+        .in('id', unreadIds)
+
+      if (markReadError) {
+        console.error('Failed to mark as read:', markReadError.message)
       }
     }
   }
