@@ -4,27 +4,18 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
-
 export default function AdminPage() {
   const [pendingUsers, setPendingUsers] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [userEmail, setUserEmail] = useState('')
-
-  // Read the last-known theme immediately, before the real check finishes,
-  // so the loading screen doesn't flash the wrong background
-  const [themeGuess] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('isSpecialAdmin') === 'true'
-  })
-
   const router = useRouter()
 
-  const isSpecialAdmin = userEmail
-  ? userEmail.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
-  : themeGuess
+  const [themeGuess] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem('specialTheme') === 'true'
+  })
+  const isSpecialAdmin = loading ? themeGuess : isAdmin
 
   useEffect(() => {
     checkAdminAndLoad()
@@ -49,8 +40,7 @@ export default function AdminPage() {
     }
 
     setIsAdmin(true)
-    setUserEmail(user.email)
-    sessionStorage.setItem('isSpecialAdmin', (user.email === SPECIAL_ADMIN_EMAIL).toString())
+    sessionStorage.setItem('specialTheme', 'true')
     await loadUsers()
     setLoading(false)
   }

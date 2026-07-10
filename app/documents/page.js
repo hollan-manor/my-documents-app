@@ -6,7 +6,6 @@ import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
-const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
 
 export default function DocumentsPage() {
   const [files, setFiles] = useState([])
@@ -35,13 +34,14 @@ export default function DocumentsPage() {
   const fileInputRef = useRef(null)
   const router = useRouter()
 
+  // Use the DB's is_admin flag as the source of truth for the special theme —
+  // more reliable than comparing email strings, and only your account has it set.
   const [themeGuess] = useState(() => {
     if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('isSpecialAdmin') === 'true'
+    return sessionStorage.getItem('specialTheme') === 'true'
   })
-  const isSpecialAdmin = userEmail
-  ? userEmail.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
-  : themeGuess
+  const [themeResolved, setThemeResolved] = useState(false)
+  const isSpecialAdmin = themeResolved ? isAdmin : themeGuess
 
   useEffect(() => {
     checkUser()
@@ -94,7 +94,8 @@ export default function DocumentsPage() {
 
     setIsAdmin(profile.is_admin)
     setUser(user)
-    sessionStorage.setItem('isSpecialAdmin', (user.email === SPECIAL_ADMIN_EMAIL).toString())
+    setThemeResolved(true)
+    sessionStorage.setItem('specialTheme', profile.is_admin.toString())
     loadUnreadStatus()
   }
 

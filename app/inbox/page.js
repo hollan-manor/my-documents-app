@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, FolderInput, ArrowLeft, Search, Info, X } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
-const SPECIAL_ADMIN_EMAIL = 'ivarnomasete@gmail.com'
 
 function formatSentDate(dateString) {
   const date = new Date(dateString)
@@ -53,6 +52,7 @@ function getDayTime(dateString) {
 export default function InboxPage() {
   const [files, setFiles] = useState([])
   const [user, setUser] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [moveMenuId, setMoveMenuId] = useState(null)
 
@@ -64,11 +64,10 @@ export default function InboxPage() {
 
   const [themeGuess] = useState(() => {
     if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('isSpecialAdmin') === 'true'
+    return sessionStorage.getItem('specialTheme') === 'true'
   })
-  const isSpecialAdmin = user
-  ? user.email?.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
-  : themeGuess
+  const [themeResolved, setThemeResolved] = useState(false)
+  const isSpecialAdmin = themeResolved ? isAdmin : themeGuess
 
   useEffect(() => {
     checkUser()
@@ -105,7 +104,7 @@ export default function InboxPage() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('approved')
+      .select('approved, is_admin')
       .eq('id', user.id)
       .single()
 
@@ -116,7 +115,9 @@ export default function InboxPage() {
     }
 
     setUser(user)
-    sessionStorage.setItem('isSpecialAdmin', (user.email === SPECIAL_ADMIN_EMAIL).toString())
+    setIsAdmin(profile.is_admin)
+    setThemeResolved(true)
+    sessionStorage.setItem('specialTheme', profile.is_admin.toString())
     loadInbox()
   }
 
