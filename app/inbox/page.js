@@ -57,7 +57,17 @@ export default function InboxPage() {
       .eq('category', 'Inbox')
       .order('created_at', { ascending: false })
 
-    if (!error) setFiles(data)
+    if (!error) {
+      setFiles(data)
+
+      const unreadIds = data.filter((f) => !f.is_read).map((f) => f.id)
+      if (unreadIds.length > 0) {
+        await supabase
+          .from('documents')
+          .update({ is_read: true })
+          .in('id', unreadIds)
+      }
+    }
   }
 
   const handleOpen = async (filePath) => {
@@ -180,7 +190,6 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  {/* Desktop icons */}
                   <div className="hidden md:flex items-center gap-2 shrink-0">
                     <div className="relative">
                       <button
@@ -233,7 +242,6 @@ export default function InboxPage() {
                     </button>
                   </div>
 
-                  {/* Mobile menu */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()

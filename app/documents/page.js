@@ -74,6 +74,7 @@ export default function DocumentsPage() {
       .from('documents')
       .select('*', { count: 'exact', head: true })
       .eq('category', 'Inbox')
+      .eq('is_read', false)
 
     if (!error) setInboxCount(count || 0)
   }
