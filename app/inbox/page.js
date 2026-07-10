@@ -66,7 +66,9 @@ export default function InboxPage() {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem('isSpecialAdmin') === 'true'
   })
-  const isSpecialAdmin = user ? user.email === SPECIAL_ADMIN_EMAIL : themeGuess
+  const isSpecialAdmin = user
+  ? user.email?.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
+  : themeGuess
 
   useEffect(() => {
     checkUser()

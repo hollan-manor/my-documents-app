@@ -22,7 +22,9 @@ export default function AdminPage() {
 
   const router = useRouter()
 
-  const isSpecialAdmin = userEmail ? userEmail === SPECIAL_ADMIN_EMAIL : themeGuess
+  const isSpecialAdmin = userEmail
+  ? userEmail.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
+  : themeGuess
 
   useEffect(() => {
     checkAdminAndLoad()

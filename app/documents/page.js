@@ -39,7 +39,9 @@ export default function DocumentsPage() {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem('isSpecialAdmin') === 'true'
   })
-  const isSpecialAdmin = user ? user.email === SPECIAL_ADMIN_EMAIL : themeGuess
+  const isSpecialAdmin = userEmail
+  ? userEmail.toLowerCase().trim() === SPECIAL_ADMIN_EMAIL.toLowerCase()
+  : themeGuess
 
   useEffect(() => {
     checkUser()
