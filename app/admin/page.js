@@ -17,6 +17,23 @@ export default function AdminPage() {
   })
   const isSpecialAdmin = loading ? themeGuess : isAdmin
 
+  const bgStyle = {
+    backgroundImage: 'var(--bg-image)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    document.documentElement.style.setProperty(
+      '--bg-image',
+      isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')"
+    )
+  }, [isSpecialAdmin])
+
   useEffect(() => {
     checkAdminAndLoad()
   }, [])
@@ -86,15 +103,6 @@ export default function AdminPage() {
     }
   }
 
-  const bgStyle = {
-    backgroundImage: isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')",
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-  }
-
-  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
@@ -106,7 +114,7 @@ export default function AdminPage() {
   if (!isAdmin) return null
 
   return (
-  <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
+    <div className="min-h-screen px-4 py-8" style={bgStyle}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold ${titleColorClass}`}>Admin</h1>

@@ -69,6 +69,23 @@ export default function InboxPage() {
   const [themeResolved, setThemeResolved] = useState(false)
   const isSpecialAdmin = themeResolved ? isAdmin : themeGuess
 
+  const bgStyle = {
+    backgroundImage: 'var(--bg-image)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    document.documentElement.style.setProperty(
+      '--bg-image',
+      isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')"
+    )
+  }, [isSpecialAdmin])
+
   useEffect(() => {
     checkUser()
   }, [])
@@ -246,15 +263,6 @@ export default function InboxPage() {
     if (searchOpen) runSearch()
   }
 
-  const bgStyle = {
-    backgroundImage: isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')",
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-  }
-
-  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
@@ -266,7 +274,7 @@ export default function InboxPage() {
   let lastMonthYear = null
 
   return (
-  <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
+    <div className="min-h-screen px-4 py-8" style={bgStyle}>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold flex items-center gap-3 ${titleColorClass}`}>

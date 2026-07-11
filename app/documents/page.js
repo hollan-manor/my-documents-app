@@ -34,14 +34,29 @@ export default function DocumentsPage() {
   const fileInputRef = useRef(null)
   const router = useRouter()
 
-  // Use the DB's is_admin flag as the source of truth for the special theme —
-  // more reliable than comparing email strings, and only your account has it set.
   const [themeGuess] = useState(() => {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem('specialTheme') === 'true'
   })
   const [themeResolved, setThemeResolved] = useState(false)
   const isSpecialAdmin = themeResolved ? isAdmin : themeGuess
+
+  const bgStyle = {
+    backgroundImage: 'var(--bg-image)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+
+  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    document.documentElement.style.setProperty(
+      '--bg-image',
+      isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')"
+    )
+  }, [isSpecialAdmin])
 
   useEffect(() => {
     checkUser()
@@ -308,23 +323,6 @@ export default function DocumentsPage() {
     }, 1500)
   }
 
-  const bgStyle = {
-  backgroundImage: 'var(--bg-image)',
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundAttachment: 'fixed',
-}
-
-useEffect(() => {
-  if (typeof window === 'undefined') return
-  document.documentElement.style.setProperty(
-    '--bg-image',
-    isSpecialAdmin ? "url('/circuit-bg.svg')" : "url('/triangles-bg.svg')"
-  )
-}, [isSpecialAdmin])
-
-  const titleColorClass = isSpecialAdmin ? 'text-[#E8C468]' : 'text-white'
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
@@ -334,7 +332,7 @@ useEffect(() => {
   }
 
   return (
-  <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
+    <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
