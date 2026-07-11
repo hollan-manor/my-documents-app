@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info } from 'lucide-react'
-import SideDecor from '../components/SideDecor'
+import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info, MessageCircle } from 'lucide-react'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
@@ -17,6 +16,7 @@ export default function DocumentsPage() {
   const [openMenuId, setOpenMenuId] = useState(null)
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
   const [hasUnread, setHasUnread] = useState(false)
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
@@ -113,6 +113,7 @@ export default function DocumentsPage() {
     setThemeResolved(true)
     sessionStorage.setItem('specialTheme', profile.is_admin.toString())
     loadUnreadStatus()
+    loadUnreadMessages(user.id)
   }
 
   const loadUnreadStatus = async () => {
@@ -123,6 +124,16 @@ export default function DocumentsPage() {
       .eq('is_read', false)
 
     if (!error) setHasUnread((count || 0) > 0)
+  }
+
+  const loadUnreadMessages = async (userId) => {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', userId)
+      .eq('read', false)
+
+    if (!error) setHasUnreadMessages((count || 0) > 0)
   }
 
   const loadFiles = async () => {
@@ -334,9 +345,8 @@ export default function DocumentsPage() {
   }
 
   return (
-  <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
-    <SideDecor />
-    <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
+      <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -359,6 +369,16 @@ export default function DocumentsPage() {
             >
               <Inbox size={18} />
               {hasUnread && (
+                <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-red-600 border-2 border-slate-900" />
+              )}
+            </button>
+            <button
+              onClick={() => { window.location.href = '/messages' }}
+              title="Messages"
+              className="relative w-11 h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 backdrop-blur hover:bg-white/20 transition-all"
+            >
+              <MessageCircle size={18} />
+              {hasUnreadMessages && (
                 <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-red-600 border-2 border-slate-900" />
               )}
             </button>
