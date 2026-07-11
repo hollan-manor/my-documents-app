@@ -276,7 +276,7 @@ export default function InboxPage() {
 
   return (
   <div className="min-h-screen px-4 py-8" style={bgStyle}>
-    <SideDecor user={user} />
+    <SideDecor />
     <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold flex items-center gap-3 ${titleColorClass}`}>

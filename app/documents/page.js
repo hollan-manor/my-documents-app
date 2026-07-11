@@ -180,6 +180,7 @@ export default function DocumentsPage() {
           file_path: filePath,
           uploaded_by: user.id,
           category: activeCategory,
+          file_size: file.size,
         },
       ])
 
