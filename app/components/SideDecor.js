@@ -1,17 +1,100 @@
 'use client'
 
-export default function SideDecor() {
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+
+export default function SideDecor({ user, variant = 'user' }) {
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    if (variant === 'user' && user) loadUserStats()
+    if (variant === 'admin') loadAdminStats()
+  }, [user, variant])
+
+  const loadUserStats = async () => {
+    const { count: totalCount } = await supabase
+      .from('documents')
+      .select('*', { count: 'exact', head: true })
+      .neq('category', 'Inbox')
+
+    const { data: recent } = await supabase
+      .from('documents')
+      .select('file_name, created_at')
+      .neq('category', 'Inbox')
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    setStats({ total: totalCount || 0, recent: recent || [] })
+  }
+
+  const loadAdminStats = async () => {
+    const { count: totalUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: pending } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('approved', false)
+
+    setStats({ totalUsers: totalUsers || 0, pending: pending || 0 })
+  }
+
+  const timeAgo = (dateString) => {
+    const diff = Date.now() - new Date(dateString).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    return `${days}d ago`
+  }
+
   return (
     <>
-      {/* Left: animated circuit decoration — desktop only */}
-      <div
-        className="hidden xl:block fixed left-6 top-24 bottom-6 w-48 rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-0"
-        style={{
-          backgroundImage: "url('/circuit-bg.svg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
+      {/* Left: quick stats panel — desktop only */}
+      <div className="hidden xl:block fixed left-6 top-24 w-56 z-0">
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-5">
+          <p className="text-white/40 text-xs uppercase tracking-wide mb-3">Overview</p>
+
+          {variant === 'user' && stats && (
+            <>
+              <div className="mb-4">
+                <p className="text-3xl font-bold text-white">{stats.total}</p>
+                <p className="text-white/50 text-xs">Total documents</p>
+              </div>
+              <p className="text-white/40 text-xs uppercase tracking-wide mb-2">Recent</p>
+              <ul className="space-y-2">
+                {stats.recent.length === 0 && (
+                  <li className="text-white/40 text-xs">No recent uploads</li>
+                )}
+                {stats.recent.map((f, i) => (
+                  <li key={i} className="text-white/70 text-xs">
+                    <p className="truncate">{f.file_name}</p>
+                    <p className="text-white/40">{timeAgo(f.created_at)}</p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {variant === 'admin' && stats && (
+            <>
+              <div className="mb-4">
+                <p className="text-3xl font-bold text-white">{stats.totalUsers}</p>
+                <p className="text-white/50 text-xs">Total users</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-white">{stats.pending}</p>
+                <p className="text-white/50 text-xs">Pending approval</p>
+              </div>
+            </>
+          )}
+
+          {!stats && <p className="text-white/40 text-xs">Loading...</p>}
+        </div>
+      </div>
 
       {/* Right: placeholder ad space — desktop only */}
       <div className="hidden xl:flex fixed right-6 top-24 bottom-6 w-48 flex-col z-0">

@@ -116,7 +116,7 @@ export default function AdminPage() {
 
   return (
   <div className="min-h-screen px-4 py-8" style={bgStyle}>
-    <SideDecor />
+    <SideDecor variant="admin" />
     <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold ${titleColorClass}`}>Admin</h1>
