@@ -3,9 +3,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 KB'
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(1)} KB`
+  const mb = kb / 1024
+  if (mb < 1024) return `${mb.toFixed(1)} MB`
+  const gb = mb / 1024
+  return `${gb.toFixed(1)} GB`
+}
+
 export default function SideDecor({ user, variant = 'user' }) {
-  const [stats, setStats] = useState(null)
+  const [categoryStats, setCategoryStats] = useState(null)
+  const [adminStats, setAdminStats] = useState(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (variant === 'user' && user) loadUserStats()
@@ -13,114 +25,116 @@ export default function SideDecor({ user, variant = 'user' }) {
   }, [user, variant])
 
   const loadUserStats = async () => {
-    const { count: totalCount, error: countError } = await supabase
-      .from('documents')
-      .select('*', { count: 'exact', head: true })
-      .neq('category', 'Inbox')
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('documents')
+        .select('category, file_size')
+        .neq('category', 'Inbox')
 
-    if (countError) {
-      console.error('SideDecor count error:', countError.message)
-      setError(countError.message)
-      return
+      if (fetchError) throw fetchError
+
+      const grouped = {}
+      let totalCount = 0
+      let totalSize = 0
+
+      for (const row of data || []) {
+        const cat = row.category || 'Other'
+        if (!grouped[cat]) grouped[cat] = { count: 0, size: 0 }
+        grouped[cat].count += 1
+        grouped[cat].size += row.file_size || 0
+        totalCount += 1
+        totalSize += row.file_size || 0
+      }
+
+      const sorted = Object.entries(grouped)
+        .map(([category, stats]) => ({ category, ...stats }))
+        .sort((a, b) => b.count - a.count)
+
+      setCategoryStats({ byCategory: sorted, totalCount, totalSize })
+    } catch (err) {
+      console.error('SideDecor user stats error:', err.message)
+      setError(err.message || 'Could not load stats')
+    } finally {
+      setLoading(false)
     }
-
-    const { data: recent, error: recentError } = await supabase
-      .from('documents')
-      .select('file_name, created_at')
-      .neq('category', 'Inbox')
-      .order('created_at', { ascending: false })
-      .limit(3)
-
-    if (recentError) {
-      console.error('SideDecor recent error:', recentError.message)
-      setError(recentError.message)
-      return
-    }
-
-    setStats({ total: totalCount || 0, recent: recent || [] })
   }
 
   const loadAdminStats = async () => {
-    const { count: totalUsers, error: usersError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
+    setLoading(true)
+    setError('')
+    try {
+      const { count: totalUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
 
-    if (usersError) {
-      console.error('SideDecor admin users error:', usersError.message)
-      setError(usersError.message)
-      return
+      if (usersError) throw usersError
+
+      const { count: pending, error: pendingError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('approved', false)
+
+      if (pendingError) throw pendingError
+
+      setAdminStats({ totalUsers: totalUsers || 0, pending: pending || 0 })
+    } catch (err) {
+      console.error('SideDecor admin stats error:', err.message)
+      setError(err.message || 'Could not load stats')
+    } finally {
+      setLoading(false)
     }
-
-    const { count: pending, error: pendingError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('approved', false)
-
-    if (pendingError) {
-      console.error('SideDecor admin pending error:', pendingError.message)
-      setError(pendingError.message)
-      return
-    }
-
-    setStats({ totalUsers: totalUsers || 0, pending: pending || 0 })
-  }
-
-  const timeAgo = (dateString) => {
-    const diff = Date.now() - new Date(dateString).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'just now'
-    if (mins < 60) return `${mins}m ago`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h ago`
-    const days = Math.floor(hrs / 24)
-    return `${days}d ago`
   }
 
   return (
     <>
-      <div className="hidden xl:block fixed left-6 top-24 w-56 z-0">
+      <div className="hidden xl:block fixed left-6 top-24 w-56 max-h-[calc(100vh-7rem)] overflow-y-auto z-0">
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-5">
           <p className="text-white/40 text-xs uppercase tracking-wide mb-3">Overview</p>
 
-          {error && (
+          {loading && <p className="text-white/40 text-xs">Loading...</p>}
+
+          {!loading && error && (
             <p className="text-red-300 text-xs">Couldn't load: {error}</p>
           )}
 
-          {!error && variant === 'user' && stats && (
+          {!loading && !error && variant === 'user' && categoryStats && (
             <>
-              <div className="mb-4">
-                <p className="text-3xl font-bold text-white">{stats.total}</p>
-                <p className="text-white/50 text-xs">Total documents</p>
-              </div>
-              <p className="text-white/40 text-xs uppercase tracking-wide mb-2">Recent</p>
-              <ul className="space-y-2">
-                {stats.recent.length === 0 && (
-                  <li className="text-white/40 text-xs">No recent uploads</li>
+              <ul className="space-y-2 mb-4">
+                {categoryStats.byCategory.length === 0 && (
+                  <li className="text-white/40 text-xs">No documents yet</li>
                 )}
-                {stats.recent.map((f, i) => (
-                  <li key={i} className="text-white/70 text-xs">
-                    <p className="truncate">{f.file_name}</p>
-                    <p className="text-white/40">{timeAgo(f.created_at)}</p>
+                {categoryStats.byCategory.map((c) => (
+                  <li key={c.category} className="flex items-center justify-between text-xs">
+                    <span className="text-white/70">{c.category}</span>
+                    <span className="text-white/40 text-right">
+                      {c.count} · {formatBytes(c.size)}
+                    </span>
                   </li>
                 ))}
               </ul>
+              <div className="border-t border-white/10 pt-3">
+                <p className="text-2xl font-bold text-white">{categoryStats.totalCount}</p>
+                <p className="text-white/50 text-xs">
+                  Total documents · {formatBytes(categoryStats.totalSize)}
+                </p>
+              </div>
             </>
           )}
 
-          {!error && variant === 'admin' && stats && (
+          {!loading && !error && variant === 'admin' && adminStats && (
             <>
               <div className="mb-4">
-                <p className="text-3xl font-bold text-white">{stats.totalUsers}</p>
+                <p className="text-3xl font-bold text-white">{adminStats.totalUsers}</p>
                 <p className="text-white/50 text-xs">Total users</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-white">{stats.pending}</p>
+                <p className="text-3xl font-bold text-white">{adminStats.pending}</p>
                 <p className="text-white/50 text-xs">Pending approval</p>
               </div>
             </>
           )}
-
-          {!error && !stats && <p className="text-white/40 text-xs">Loading...</p>}
         </div>
       </div>
 
