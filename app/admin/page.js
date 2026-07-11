@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import SideDecor from '../components/SideDecor'
 
 export default function AdminPage() {
   const [pendingUsers, setPendingUsers] = useState([])
@@ -114,8 +115,9 @@ export default function AdminPage() {
   if (!isAdmin) return null
 
   return (
-    <div className="min-h-screen px-4 py-8" style={bgStyle}>
-      <div className="max-w-2xl mx-auto">
+  <div className="min-h-screen px-4 py-8" style={bgStyle}>
+    <SideDecor />
+    <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold ${titleColorClass}`}>Admin</h1>
           <button

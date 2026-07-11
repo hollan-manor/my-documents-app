@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, FolderInput, ArrowLeft, Search, Info, X } from 'lucide-react'
+import SideDecor from '../components/SideDecor'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
@@ -274,8 +275,9 @@ export default function InboxPage() {
   let lastMonthYear = null
 
   return (
-    <div className="min-h-screen px-4 py-8" style={bgStyle}>
-      <div className="max-w-3xl mx-auto">
+  <div className="min-h-screen px-4 py-8" style={bgStyle}>
+    <SideDecor />
+    <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className={`text-3xl font-bold flex items-center gap-3 ${titleColorClass}`}>
             <button

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info } from 'lucide-react'
+import SideDecor from '../components/SideDecor'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
@@ -332,8 +333,9 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
-      <div className="max-w-3xl mx-auto">
+  <div className="min-h-screen px-4 py-8 pb-24 md:pb-8" style={bgStyle}>
+    <SideDecor />
+    <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
