@@ -53,7 +53,7 @@ export default function ChatPage() {
 
     const { data: otherProfile } = await supabase
       .from('profiles')
-      .select('email')
+      .select('email, username')
       .eq('id', otherUserId)
       .single()
 
@@ -73,7 +73,6 @@ export default function ChatPage() {
     if (!error) {
       setMessages(data)
 
-      // Mark any messages from them to me as read
       const unreadIds = data
         .filter((m) => m.sender_id === otherUserId && m.recipient_id === myId && !m.read)
         .map((m) => m.id)
@@ -106,7 +105,6 @@ export default function ChatPage() {
           if (isRelevant) {
             setMessages((prev) => [...prev, msg])
 
-            // If it's from them, mark it read immediately since we're viewing this chat
             if (msg.sender_id === otherUserId) {
               supabase.from('messages').update({ read: true }).eq('id', msg.id)
             }
@@ -156,6 +154,8 @@ export default function ChatPage() {
     )
   }
 
+  const headerName = otherUser?.username ? `@${otherUser.username}` : otherUser?.email || 'Chat'
+
   return (
     <div className="min-h-screen px-4 py-8 flex flex-col" style={bgStyle}>
       <div className="max-w-2xl w-full mx-auto flex flex-col flex-1">
@@ -166,9 +166,7 @@ export default function ChatPage() {
           >
             <ArrowLeft size={18} />
           </button>
-          <h1 className="text-xl font-bold text-white truncate">
-            {otherUser?.email || 'Chat'}
-          </h1>
+          <h1 className="text-xl font-bold text-white truncate">{headerName}</h1>
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-4 flex-1 flex flex-col min-h-[60vh] max-h-[70vh]">
