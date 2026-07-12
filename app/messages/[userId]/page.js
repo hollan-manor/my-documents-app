@@ -81,6 +81,7 @@ export default function ChatPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
+          console.log('Realtime message received:', payload.new)
           const msg = payload.new
           const isRelevant =
             (msg.sender_id === myId && msg.recipient_id === otherUserId) ||
@@ -88,7 +89,6 @@ export default function ChatPage() {
 
           if (isRelevant) {
             setMessages((prev) => {
-              // Avoid duplicating a message we already added optimistically on send
               if (prev.some((m) => m.id === msg.id)) return prev
               return [...prev, msg]
             })
@@ -98,7 +98,9 @@ export default function ChatPage() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status)
+      })
 
     channelRef.current = channel
   }
@@ -146,7 +148,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
+      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-4 border-b border-white/10 bg-white/10 backdrop-blur-lg shrink-0">
         <button
           onClick={() => router.push('/messages')}
           className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-all md:hidden"
@@ -188,7 +190,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="flex gap-2 px-4 py-4 border-t border-white/10 shrink-0">
+      <form onSubmit={handleSend} className="sticky bottom-0 z-10 flex gap-2 px-4 py-4 border-t border-white/10 bg-white/10 backdrop-blur-lg shrink-0">
         <input
           type="text"
           value={newMessage}

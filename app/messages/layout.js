@@ -186,7 +186,7 @@ export default function MessagesLayout({ children }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { window.location.href = '/documents' }}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-all md:hidden"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-all"
               >
                 <ArrowLeft size={20} />
               </button>
