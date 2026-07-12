@@ -4,11 +4,25 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { ArrowLeft, Search, X } from 'lucide-react'
 
+function timeAgo(dateString) {
+  const diff = Date.now() - new Date(dateString).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'now'
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d`
+  const weeks = Math.floor(days / 7)
+  return `${weeks}w`
+}
+
 export default function MessagesPage() {
   const [user, setUser] = useState(null)
   const [myUsername, setMyUsername] = useState(null)
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
   const [usernameModalOpen, setUsernameModalOpen] = useState(false)
@@ -78,6 +92,7 @@ export default function MessagesPage() {
           ...contact,
           lastMessage: lastMsg?.content || null,
           lastMessageAt: lastMsg?.created_at || null,
+          lastMessageFromMe: lastMsg?.sender_id === myId,
           unreadCount: unreadCount || 0,
         }
       })
@@ -140,72 +155,100 @@ export default function MessagesPage() {
 
   return (
     <div className="min-h-screen px-4 py-8" style={bgStyle}>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-lg mx-auto">
+        {/* Header, IG-style: back arrow, name, actions */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => { window.location.href = '/documents' }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-all"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </button>
-            <h1 className="text-3xl font-bold text-white">Messages</h1>
+            <h1 className="text-xl font-bold text-white">
+              {myUsername ? `@${myUsername}` : 'Messages'}
+            </h1>
           </div>
 
-          <button
-            onClick={() => setUsernameModalOpen(true)}
-            className="px-3 py-2 rounded-xl text-sm font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
-          >
-            {myUsername ? `@${myUsername}` : 'Set username'}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSearchOpen((s) => !s)}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-all"
+            >
+              {searchOpen ? <X size={18} /> : <Search size={18} />}
+            </button>
+            <button
+              onClick={() => setUsernameModalOpen(true)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+            >
+              {myUsername ? 'Edit' : 'Set username'}
+            </button>
+          </div>
         </div>
 
-        <div className="relative mb-4">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search by username or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
-        </div>
+        {searchOpen && (
+          <div className="relative mb-3">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+        )}
 
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6">
+        {/* Glass panel wrapping the whole conversation list, IG-style rows inside */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
           {loading ? (
-            <p className="text-white/70">Loading contacts...</p>
+            <p className="text-white/70 p-6">Loading contacts...</p>
           ) : filteredContacts.length === 0 ? (
-            <p className="text-white/70">
+            <p className="text-white/70 p-6">
               {searchQuery ? 'No matching users.' : 'No other users to message yet.'}
             </p>
           ) : (
-            <ul className="space-y-2">
-              {filteredContacts.map((contact) => (
-                <li key={contact.id}>
+            <div>
+              {filteredContacts.map((contact, i) => {
+                const displayName = contact.username ? `@${contact.username}` : contact.email
+                const isUnread = contact.unreadCount > 0
+
+                return (
                   <button
+                    key={contact.id}
                     onClick={() => { window.location.href = `/messages/${contact.id}` }}
-                    className="w-full flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl px-4 py-3 transition-all text-left"
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/10 transition-all ${
+                      i !== filteredContacts.length - 1 ? 'border-b border-white/10' : ''
+                    }`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 flex items-center justify-center text-white font-semibold shrink-0">
-                      {(contact.username || contact.email).charAt(0).toUpperCase()}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center text-white font-semibold text-lg shrink-0">
+                      {displayName.replace('@', '').charAt(0).toUpperCase()}
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <p className="text-white truncate">
-                        {contact.username ? `@${contact.username}` : contact.email}
+                      <p className={`truncate ${isUnread ? 'text-white font-semibold' : 'text-white/90'}`}>
+                        {displayName}
                       </p>
-                      <p className="text-white/50 text-xs truncate">
-                        {contact.lastMessage || 'No messages yet'}
+                      <p className={`text-sm truncate ${isUnread ? 'text-white/80' : 'text-white/50'}`}>
+                        {contact.lastMessage
+                          ? `${contact.lastMessageFromMe ? 'You: ' : ''}${contact.lastMessage}`
+                          : 'Start a conversation'}
                       </p>
                     </div>
-                    {contact.unreadCount > 0 && (
-                      <span className="shrink-0 min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
-                        {contact.unreadCount}
-                      </span>
-                    )}
+
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {contact.lastMessageAt && (
+                        <span className="text-white/40 text-xs">{timeAgo(contact.lastMessageAt)}</span>
+                      )}
+                      {isUnread && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                      )}
+                    </div>
                   </button>
-                </li>
-              ))}
-            </ul>
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
