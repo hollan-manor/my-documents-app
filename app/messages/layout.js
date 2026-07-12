@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { ArrowLeft, Search, X, SquarePen } from 'lucide-react'
+import { ArrowLeft, Search, X } from 'lucide-react'
 
 function timeAgo(dateString) {
   const diff = Date.now() - new Date(dateString).getTime()
@@ -34,8 +34,6 @@ export default function MessagesLayout({ children }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  // On the base /messages route (no chat picked), mobile shows the list.
-  // On /messages/[id], mobile shows the chat instead. Desktop always shows both.
   const isListRoute = pathname === '/messages'
   const activeUserId = pathname.startsWith('/messages/') ? pathname.split('/')[2] : null
 
@@ -66,7 +64,6 @@ export default function MessagesLayout({ children }) {
     setMyUsername(profile.username)
     loadContacts(user.id)
 
-    // Live-refresh the conversation list whenever a relevant message arrives
     const channel = supabase
       .channel(`inbox-${user.id}`)
       .on(
@@ -180,9 +177,8 @@ export default function MessagesLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen md:py-6" style={bgStyle}>
-      <div className="max-w-5xl mx-auto h-screen md:h-[85vh] flex md:rounded-2xl md:border md:border-white/20 md:shadow-2xl overflow-hidden">
-        {/* Sidebar: conversation list */}
+    <div className="h-screen" style={bgStyle}>
+      <div className="h-full flex overflow-hidden">
         <div
           className={`${isListRoute ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[360px] shrink-0 bg-white/10 backdrop-blur-lg border-r border-white/10`}
         >
@@ -280,7 +276,6 @@ export default function MessagesLayout({ children }) {
           </div>
         </div>
 
-        {/* Right pane: either empty state (page.js) or a chat ([userId]/page.js) */}
         <div className={`${isListRoute ? 'hidden' : 'flex'} md:flex flex-1 flex-col bg-white/5`}>
           {children}
         </div>

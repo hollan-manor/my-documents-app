@@ -87,7 +87,11 @@ export default function ChatPage() {
             (msg.sender_id === otherUserId && msg.recipient_id === myId)
 
           if (isRelevant) {
-            setMessages((prev) => [...prev, msg])
+            setMessages((prev) => {
+              // Avoid duplicating a message we already added optimistically on send
+              if (prev.some((m) => m.id === msg.id)) return prev
+              return [...prev, msg]
+            })
             if (msg.sender_id === otherUserId) {
               supabase.from('messages').update({ read: true }).eq('id', msg.id)
             }
@@ -107,18 +111,26 @@ export default function ChatPage() {
     const content = newMessage.trim()
     setNewMessage('')
 
-    const { error } = await supabase.from('messages').insert([
-      {
-        sender_id: user.id,
-        recipient_id: otherUserId,
-        content,
-      },
-    ])
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([
+        {
+          sender_id: user.id,
+          recipient_id: otherUserId,
+          content,
+        },
+      ])
+      .select()
+      .single()
 
     if (error) {
+      console.error('Send error:', error.message)
       alert('Could not send message: ' + error.message)
+      setSending(false)
+      return
     }
 
+    setMessages((prev) => [...prev, data])
     setSending(false)
   }
 
