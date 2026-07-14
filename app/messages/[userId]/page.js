@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileText, Download } from 'lucide-react'
 
 export default function ChatPage() {
   const params = useParams()
@@ -15,8 +15,14 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [signedUrls, setSignedUrls] = useState({})
+
+  const [consentModalOpen, setConsentModalOpen] = useState(false)
+  const [pendingFile, setPendingFile] = useState(null)
+
   const messagesEndRef = useRef(null)
   const channelRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     loadChat()
@@ -30,6 +36,22 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    // Fetch signed URLs for any image attachments so they can be shown inline
+    messages.forEach((msg) => {
+      if (msg.attachment_path && msg.attachment_type?.startsWith('image/') && !signedUrls[msg.attachment_path]) {
+        fetchSignedUrl(msg.attachment_path)
+      }
+    })
+  }, [messages])
+
+  const fetchSignedUrl = async (path) => {
+    const { data } = await supabase.storage.from('chat-attachments').createSignedUrl(path, 3600)
+    if (data) {
+      setSignedUrls((prev) => ({ ...prev, [path]: data.signedUrl }))
+    }
+  }
 
   const loadChat = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -66,10 +88,7 @@ export default function ChatPage() {
         .map((m) => m.id)
 
       if (unreadIds.length > 0) {
-        await supabase
-          .from('messages')
-          .update({ read: true })
-          .in('id', unreadIds)
+        await supabase.from('messages').update({ read: true }).in('id', unreadIds)
       }
     }
   }
@@ -81,7 +100,6 @@ export default function ChatPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          console.log('Realtime message received:', payload.new)
           const msg = payload.new
           const isRelevant =
             (msg.sender_id === myId && msg.recipient_id === otherUserId) ||
@@ -98,9 +116,7 @@ export default function ChatPage() {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status)
-      })
+      .subscribe()
 
     channelRef.current = channel
   }
@@ -115,18 +131,11 @@ export default function ChatPage() {
 
     const { data, error } = await supabase
       .from('messages')
-      .insert([
-        {
-          sender_id: user.id,
-          recipient_id: otherUserId,
-          content,
-        },
-      ])
+      .insert([{ sender_id: user.id, recipient_id: otherUserId, content }])
       .select()
       .single()
 
     if (error) {
-      console.error('Send error:', error.message)
       alert('Could not send message: ' + error.message)
       setSending(false)
       return
@@ -134,6 +143,93 @@ export default function ChatPage() {
 
     setMessages((prev) => [...prev, data])
     setSending(false)
+  }
+
+  const handleAttachClick = () => {
+    const consented = localStorage.getItem('chatAttachmentConsent') === 'true'
+    fileInputRef.current.click()
+    if (!consented) {
+      // We'll show the modal after the file is actually picked, see handleFileChange
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const consented = localStorage.getItem('chatAttachmentConsent') === 'true'
+    if (!consented) {
+      setPendingFile(file)
+      setConsentModalOpen(true)
+    } else {
+      uploadAndSendFile(file)
+    }
+    e.target.value = ''
+  }
+
+  const confirmConsent = () => {
+    localStorage.setItem('chatAttachmentConsent', 'true')
+    setConsentModalOpen(false)
+    if (pendingFile) {
+      uploadAndSendFile(pendingFile)
+      setPendingFile(null)
+    }
+  }
+
+  const uploadAndSendFile = async (file) => {
+    setSending(true)
+
+    const path = `${user.id}/${Date.now()}_${file.name}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('chat-attachments')
+      .upload(path, file)
+
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message)
+      setSending(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([
+        {
+          sender_id: user.id,
+          recipient_id: otherUserId,
+          content: '',
+          attachment_path: path,
+          attachment_name: file.name,
+          attachment_type: file.type,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      alert('Could not send attachment: ' + error.message)
+      setSending(false)
+      return
+    }
+
+    setMessages((prev) => [...prev, data])
+    setSending(false)
+  }
+
+  const handleDownloadAttachment = async (path, name) => {
+    const { data, error } = await supabase.storage.from('chat-attachments').download(path)
+    if (error) {
+      alert('Could not download: ' + error.message)
+      return
+    }
+    const url = URL.createObjectURL(data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   if (!user || !otherUser) {
@@ -169,17 +265,43 @@ export default function ChatPage() {
         ) : (
           messages.map((msg) => {
             const isMine = msg.sender_id === user.id
+            const isImage = msg.attachment_type?.startsWith('image/')
+
             return (
               <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${
+                  className={`max-w-[75%] rounded-2xl text-sm overflow-hidden ${
                     isMine
                       ? 'bg-gradient-to-r from-indigo-500 to-pink-500 text-white'
                       : 'bg-white/20 text-white'
                   }`}
                 >
-                  <p className="break-words">{msg.content}</p>
-                  <p className="text-[10px] opacity-60 mt-1">
+                  {msg.attachment_path && isImage && signedUrls[msg.attachment_path] && (
+                    <img
+                      src={signedUrls[msg.attachment_path]}
+                      alt={msg.attachment_name}
+                      className="max-w-full max-h-64 object-cover"
+                    />
+                  )}
+
+                  {msg.attachment_path && !isImage && (
+                    <button
+                      onClick={() => handleDownloadAttachment(msg.attachment_path, msg.attachment_name)}
+                      className="flex items-center gap-2 px-4 py-3 w-full hover:bg-white/10 transition-all"
+                    >
+                      <FileText size={18} className="shrink-0" />
+                      <span className="truncate text-left flex-1">{msg.attachment_name}</span>
+                      <Download size={16} className="shrink-0" />
+                    </button>
+                  )}
+
+                  {msg.content && (
+                    <div className="px-4 py-2">
+                      <p className="break-words">{msg.content}</p>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] opacity-60 px-4 pb-2">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -191,6 +313,20 @@ export default function ChatPage() {
       </div>
 
       <form onSubmit={handleSend} className="sticky bottom-0 z-10 flex gap-2 px-4 py-4 border-t border-white/10 bg-white/10 backdrop-blur-lg shrink-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={handleAttachClick}
+          disabled={sending}
+          className="w-12 h-12 flex items-center justify-center rounded-full text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all shrink-0 disabled:opacity-40"
+        >
+          <Paperclip size={18} />
+        </button>
         <input
           type="text"
           value={newMessage}
@@ -206,6 +342,31 @@ export default function ChatPage() {
           <Send size={18} />
         </button>
       </form>
+
+      {consentModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50">
+          <div className="w-full max-w-sm bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-8">
+            <h2 className="text-xl font-bold text-white mb-2">Share Files in Chat</h2>
+            <p className="text-white/70 text-sm mb-6">
+              Files you send here will be visible to the person you're chatting with. This notice only appears once.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setConsentModalOpen(false); setPendingFile(null) }}
+                className="flex-1 py-3 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmConsent}
+                className="flex-1 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
