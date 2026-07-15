@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { ArrowLeft, Send, Paperclip, FileText, Download, Check, CheckCheck } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileText, Download, CheckCheck } from 'lucide-react'
 
 export default function ChatPage() {
   const params = useParams()
@@ -119,18 +119,20 @@ export default function ChatPage() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages' },
         (payload) => {
+          console.log('UPDATE received:', payload.new)
           const msg = payload.new
           const isRelevant =
             (msg.sender_id === myId && msg.recipient_id === otherUserId) ||
             (msg.sender_id === otherUserId && msg.recipient_id === myId)
 
           if (isRelevant) {
-            // This is what makes the tick flip to red instantly on the sender's screen
             setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, read: msg.read } : m)))
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Chat realtime status:', status)
+      })
 
     channelRef.current = channel
   }
@@ -315,7 +317,7 @@ export default function ChatPage() {
                     </p>
                     {isMine && (
                       msg.read ? (
-                        <CheckCheck size={14} className="text-red-500" />
+                        <CheckCheck size={14} className="text-green-500" />
                       ) : (
                         <CheckCheck size={14} className="opacity-60" />
                       )

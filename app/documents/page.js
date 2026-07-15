@@ -349,7 +349,6 @@ export default function DocumentsPage() {
     <div className="h-screen flex flex-col" style={bgStyle}>
       <SideDecor />
 
-      {/* Sticky top bar */}
       <div className="shrink-0 flex items-center justify-between px-4 md:px-6 py-4 border-b border-white/10 bg-white/10 backdrop-blur-lg">
         <div className="flex items-center gap-2 md:gap-3">
           <button
@@ -403,7 +402,6 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* Sticky category bar — desktop */}
       <div className="hidden md:flex shrink-0 flex-wrap gap-2 px-6 py-3 border-b border-white/10 bg-white/5 backdrop-blur-lg">
         {CATEGORIES.map((cat) => (
           <button
@@ -420,8 +418,7 @@ export default function DocumentsPage() {
         ))}
       </div>
 
-      {/* Category dropdown — mobile */}
-      <div className="md:hidden shrink-0 relative px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-lg">
+      <div className="md:hidden shrink-0 relative z-30 px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-lg">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -436,7 +433,7 @@ export default function DocumentsPage() {
         {categoryMenuOpen && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute left-4 right-4 mt-2 z-20 bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
+            className="absolute left-4 right-4 mt-2 z-[100] bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
           >
             {CATEGORIES.map((cat) => (
               <button
@@ -458,7 +455,6 @@ export default function DocumentsPage() {
         )}
       </div>
 
-      {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6">
