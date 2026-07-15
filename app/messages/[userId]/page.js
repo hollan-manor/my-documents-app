@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { ArrowLeft, Send, Paperclip, FileText, Download } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileText, Download, Check, CheckCheck } from 'lucide-react'
 
 export default function ChatPage() {
   const params = useParams()
@@ -38,7 +38,6 @@ export default function ChatPage() {
   }, [messages])
 
   useEffect(() => {
-    // Fetch signed URLs for any image attachments so they can be shown inline
     messages.forEach((msg) => {
       if (msg.attachment_path && msg.attachment_type?.startsWith('image/') && !signedUrls[msg.attachment_path]) {
         fetchSignedUrl(msg.attachment_path)
@@ -116,6 +115,21 @@ export default function ChatPage() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new
+          const isRelevant =
+            (msg.sender_id === myId && msg.recipient_id === otherUserId) ||
+            (msg.sender_id === otherUserId && msg.recipient_id === myId)
+
+          if (isRelevant) {
+            // This is what makes the tick flip to red instantly on the sender's screen
+            setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, read: msg.read } : m)))
+          }
+        }
+      )
       .subscribe()
 
     channelRef.current = channel
@@ -146,11 +160,7 @@ export default function ChatPage() {
   }
 
   const handleAttachClick = () => {
-    const consented = localStorage.getItem('chatAttachmentConsent') === 'true'
     fileInputRef.current.click()
-    if (!consented) {
-      // We'll show the modal after the file is actually picked, see handleFileChange
-    }
   }
 
   const handleFileChange = (e) => {
@@ -181,9 +191,7 @@ export default function ChatPage() {
 
     const path = `${user.id}/${Date.now()}_${file.name}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('chat-attachments')
-      .upload(path, file)
+    const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(path, file)
 
     if (uploadError) {
       alert('Upload failed: ' + uploadError.message)
@@ -301,9 +309,18 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  <p className="text-[10px] opacity-60 px-4 pb-2">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <div className="flex items-center justify-end gap-1 px-4 pb-2">
+                    <p className="text-[10px] opacity-60">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    {isMine && (
+                      msg.read ? (
+                        <CheckCheck size={14} className="text-red-500" />
+                      ) : (
+                        <CheckCheck size={14} className="opacity-60" />
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -313,12 +330,7 @@ export default function ChatPage() {
       </div>
 
       <form onSubmit={handleSend} className="sticky bottom-0 z-10 flex gap-2 px-4 py-4 border-t border-white/10 bg-white/10 backdrop-blur-lg shrink-0">
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileChange}
-          className="hidden"
-        />
+        <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
         <button
           type="button"
           onClick={handleAttachClick}
