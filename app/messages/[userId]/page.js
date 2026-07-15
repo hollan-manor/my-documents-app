@@ -38,12 +38,17 @@ export default function ChatPage() {
   }, [messages])
 
   useEffect(() => {
-    messages.forEach((msg) => {
-      if (msg.attachment_path && msg.attachment_type?.startsWith('image/') && !signedUrls[msg.attachment_path]) {
-        fetchSignedUrl(msg.attachment_path)
-      }
-    })
-  }, [messages])
+  messages.forEach((msg) => {
+    const isPlayable =
+      msg.attachment_type?.startsWith('image/') ||
+      msg.attachment_type?.startsWith('video/') ||
+      msg.attachment_type?.startsWith('audio/')
+
+    if (msg.attachment_path && isPlayable && !signedUrls[msg.attachment_path]) {
+      fetchSignedUrl(msg.attachment_path)
+    }
+  })
+}, [messages])
 
   const fetchSignedUrl = async (path) => {
     const { data } = await supabase.storage.from('chat-attachments').createSignedUrl(path, 3600)
@@ -276,6 +281,8 @@ export default function ChatPage() {
           messages.map((msg) => {
             const isMine = msg.sender_id === user.id
             const isImage = msg.attachment_type?.startsWith('image/')
+            const isVideo = msg.attachment_type?.startsWith('video/')
+            const isAudio = msg.attachment_type?.startsWith('audio/')
 
             return (
               <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -287,22 +294,38 @@ export default function ChatPage() {
                   }`}
                 >
                   {msg.attachment_path && isImage && signedUrls[msg.attachment_path] && (
-                    <img
-                      src={signedUrls[msg.attachment_path]}
-                      alt={msg.attachment_name}
-                      className="max-w-full max-h-64 object-cover"
+                   <img
+                     src={signedUrls[msg.attachment_path]}
+                     alt={msg.attachment_name}
+                     className="max-w-full max-h-64 object-cover"
                     />
                   )}
 
-                  {msg.attachment_path && !isImage && (
-                    <button
-                      onClick={() => handleDownloadAttachment(msg.attachment_path, msg.attachment_name)}
-                      className="flex items-center gap-2 px-4 py-3 w-full hover:bg-white/10 transition-all"
+                  {msg.attachment_path && isVideo && signedUrls[msg.attachment_path] && (
+                   <video
+                     src={signedUrls[msg.attachment_path]}
+                     controls
+                     className="max-w-full max-h-64 w-full"
+                   />
+                  )}
+
+                  {msg.attachment_path && isAudio && signedUrls[msg.attachment_path] && (
+                   <audio
+                     src={signedUrls[msg.attachment_path]}
+                     controls
+                     className="w-full px-2 py-2"
+                   />
+                  )}
+
+                  {msg.attachment_path && !isImage && !isVideo && !isAudio && (
+                   <button
+                     onClick={() => handleDownloadAttachment(msg.attachment_path, msg.attachment_name)}
+                     className="flex items-center gap-2 px-4 py-3 w-full hover:bg-white/10 transition-all"
                     >
-                      <FileText size={18} className="shrink-0" />
-                      <span className="truncate text-left flex-1">{msg.attachment_name}</span>
-                      <Download size={16} className="shrink-0" />
-                    </button>
+                     <FileText size={18} className="shrink-0" />
+                     <span className="truncate text-left flex-1">{msg.attachment_name}</span>
+                     <Download size={16} className="shrink-0" />
+                   </button>
                   )}
 
                   {msg.content && (
