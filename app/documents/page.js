@@ -8,6 +8,14 @@ import SideDecor from '../components/SideDecor'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
 
+function getFileKind(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase()
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'image'
+  if (['mp4', 'mov', 'webm', 'ogg', 'mkv'].includes(ext)) return 'video'
+  if (['mp3', 'wav', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio'
+  return 'other'
+}
+
 export default function DocumentsPage() {
   const [files, setFiles] = useState([])
   const [isAdmin, setIsAdmin] = useState(false)
@@ -32,6 +40,8 @@ export default function DocumentsPage() {
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [searchMenuId, setSearchMenuId] = useState(null)
+
+  const [previewFile, setPreviewFile] = useState(null)
 
   const fileInputRef = useRef(null)
   const router = useRouter()
@@ -206,17 +216,23 @@ export default function DocumentsPage() {
     e.target.value = ''
   }
 
-  const handleOpen = async (filePath) => {
+  const handleOpen = async (filePath, fileName) => {
     const { data, error } = await supabase.storage
       .from('documents')
-      .createSignedUrl(filePath, 60)
+      .createSignedUrl(filePath, 3600)
 
     if (error) {
       alert('Could not open file: ' + error.message)
       return
     }
 
-    window.open(data.signedUrl, '_blank')
+    const kind = getFileKind(fileName)
+
+    if (kind === 'image' || kind === 'video' || kind === 'audio') {
+      setPreviewFile({ url: data.signedUrl, kind, name: fileName })
+    } else {
+      window.open(data.signedUrl, '_blank')
+    }
   }
 
   const handleDownload = async (filePath, fileName) => {
@@ -508,7 +524,7 @@ export default function DocumentsPage() {
                       <>
                         <div className="hidden md:flex items-center gap-2 shrink-0">
                           <button
-                            onClick={() => handleOpen(file.file_path)}
+                            onClick={() => handleOpen(file.file_path, file.file_name)}
                             title="Open"
                             className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all"
                           >
@@ -553,7 +569,7 @@ export default function DocumentsPage() {
                             className="md:hidden absolute right-4 top-14 z-10 w-44 bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden"
                           >
                             <button
-                              onClick={() => { handleOpen(file.file_path); setOpenMenuId(null) }}
+                              onClick={() => { handleOpen(file.file_path, file.file_name); setOpenMenuId(null) }}
                               className="w-full flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10 transition-all"
                             >
                               <Eye size={16} /> Open
@@ -717,7 +733,7 @@ export default function DocumentsPage() {
 
                     <div className="hidden md:flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => handleOpen(file.file_path)}
+                        onClick={() => handleOpen(file.file_path, file.file_name)}
                         title="Open"
                         className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all"
                       >
@@ -762,7 +778,7 @@ export default function DocumentsPage() {
                         className="md:hidden absolute right-4 top-14 z-10 w-44 bg-slate-900 border border-white/20 rounded-xl shadow-2xl overflow-hidden"
                       >
                         <button
-                          onClick={() => { handleOpen(file.file_path); setSearchMenuId(null) }}
+                          onClick={() => { handleOpen(file.file_path, file.file_name); setSearchMenuId(null) }}
                           className="w-full flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/10 transition-all"
                         >
                           <Eye size={16} /> Open
@@ -791,6 +807,47 @@ export default function DocumentsPage() {
                 ))}
               </ul>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewFile && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-[200]"
+          onClick={() => setPreviewFile(null)}
+        >
+          <div
+            className="max-w-3xl w-full max-h-[85vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between mb-3">
+              <p className="text-white truncate pr-4">{previewFile.name}</p>
+              <button
+                onClick={() => setPreviewFile(null)}
+                className="w-9 h-9 flex items-center justify-center rounded-full text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {previewFile.kind === 'image' && (
+              <img
+                src={previewFile.url}
+                alt={previewFile.name}
+                className="max-w-full max-h-[75vh] rounded-xl object-contain"
+              />
+            )}
+            {previewFile.kind === 'video' && (
+              <video
+                src={previewFile.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[75vh] rounded-xl w-full"
+              />
+            )}
+            {previewFile.kind === 'audio' && (
+              <audio src={previewFile.url} controls autoPlay className="w-full" />
+            )}
           </div>
         </div>
       )}
