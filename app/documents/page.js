@@ -217,23 +217,66 @@ export default function DocumentsPage() {
   }
 
   const handleOpen = async (filePath, fileName) => {
-    const { data, error } = await supabase.storage
-      .from('documents')
-      .createSignedUrl(filePath, 3600)
+   const kind = getFileKind(fileName)
 
-    if (error) {
-      alert('Could not open file: ' + error.message)
-      return
-    }
-
-    const kind = getFileKind(fileName)
-
-    if (kind === 'image' || kind === 'video' || kind === 'audio') {
-      setPreviewFile({ url: data.signedUrl, kind, name: fileName })
-    } else {
-      window.open(data.signedUrl, '_blank')
-    }
+   if (kind === 'video' || kind === 'audio') {
+    // Build a playlist of every playable audio/video file in the current category
+   const queue = files.filter((f) => {
+      const k = getFileKind(f.file_name)
+      return k === 'video' || k === 'audio'
+    })
+   const index = queue.findIndex((f) => f.file_path === filePath)
+    await openQueueItem(queue, index)
+    return
   }
+
+   const { data, error } = await supabase.storage
+    .from('documents')
+    .createSignedUrl(filePath, 3600)
+
+  if (error) {
+    alert('Could not open file: ' + error.message)
+    return
+  }
+
+  if (kind === 'image') {
+    setPreviewFile({ url: data.signedUrl, kind, name: fileName })
+  } else {
+    window.open(data.signedUrl, '_blank')
+  }
+}
+
+const openQueueItem = async (queue, index) => {
+  if (index < 0 || index >= queue.length) return
+
+  const item = queue[index]
+  const { data, error } = await supabase.storage
+    .from('documents')
+    .createSignedUrl(item.file_path, 3600)
+
+  if (error) {
+    alert('Could not open file: ' + error.message)
+    return
+  }
+
+  setPreviewFile({
+    url: data.signedUrl,
+    kind: getFileKind(item.file_name),
+    name: item.file_name,
+    queue,
+    queueIndex: index,
+  })
+}
+
+const playNext = () => {
+  if (!previewFile?.queue) return
+  openQueueItem(previewFile.queue, previewFile.queueIndex + 1)
+}
+
+const playPrevious = () => {
+  if (!previewFile?.queue) return
+  openQueueItem(previewFile.queue, previewFile.queueIndex - 1)
+}
 
   const handleDownload = async (filePath, fileName) => {
     const { data, error } = await supabase.storage
@@ -367,6 +410,13 @@ export default function DocumentsPage() {
 
       <div className="shrink-0 flex items-center justify-between px-4 md:px-6 py-4 border-b border-white/10 bg-white/10 backdrop-blur-lg">
         <div className="flex items-center gap-2 md:gap-3">
+          <button
+           onClick={() => { window.location.href = '/assistant' }}
+           title="Assistant"
+           className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+          >
+           <Bot size={18} />
+         </button>
           <button
             onClick={() => fileInputRef.current.click()}
             disabled={uploading}
@@ -812,45 +862,77 @@ export default function DocumentsPage() {
       )}
 
       {previewFile && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-[200]"
+  <div
+    className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-[200]"
+    onClick={() => setPreviewFile(null)}
+  >
+    <div
+      className="max-w-3xl w-full max-h-[85vh] flex flex-col items-center"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="w-full flex items-center justify-between mb-3">
+        <p className="text-white truncate pr-4">
+          {previewFile.name}
+          {previewFile.queue && (
+            <span className="text-white/50 text-sm ml-2">
+              ({previewFile.queueIndex + 1}/{previewFile.queue.length})
+            </span>
+          )}
+        </p>
+        <button
           onClick={() => setPreviewFile(null)}
+          className="w-9 h-9 flex items-center justify-center rounded-full text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
         >
-          <div
-            className="max-w-3xl w-full max-h-[85vh] flex flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between mb-3">
-              <p className="text-white truncate pr-4">{previewFile.name}</p>
-              <button
-                onClick={() => setPreviewFile(null)}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
-              >
-                <X size={18} />
-              </button>
-            </div>
+          <X size={18} />
+        </button>
+      </div>
 
-            {previewFile.kind === 'image' && (
-              <img
-                src={previewFile.url}
-                alt={previewFile.name}
-                className="max-w-full max-h-[75vh] rounded-xl object-contain"
-              />
-            )}
-            {previewFile.kind === 'video' && (
-              <video
-                src={previewFile.url}
-                controls
-                autoPlay
-                className="max-w-full max-h-[75vh] rounded-xl w-full"
-              />
-            )}
-            {previewFile.kind === 'audio' && (
-              <audio src={previewFile.url} controls autoPlay className="w-full" />
-            )}
-          </div>
+      {previewFile.kind === 'image' && (
+        <img
+          src={previewFile.url}
+          alt={previewFile.name}
+          className="max-w-full max-h-[75vh] rounded-xl object-contain"
+        />
+      )}
+      {previewFile.kind === 'video' && (
+        <video
+          key={previewFile.url}
+          src={previewFile.url}
+          controls
+          autoPlay
+          onEnded={playNext}
+          className="max-w-full max-h-[75vh] rounded-xl w-full"
+        />
+      )}
+      {previewFile.kind === 'audio' && (
+        <audio
+          key={previewFile.url}
+          src={previewFile.url}
+          controls
+          autoPlay
+          onEnded={playNext}
+          className="w-full"
+        />
+      )}
+
+      {previewFile.queue && previewFile.queue.length > 1 && (
+        <div className="flex items-center gap-4 mt-4">
+          <button
+            onClick={playPrevious}
+            disabled={previewFile.queueIndex === 0}
+            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
+          >
+            ← Previous
+          </button>
+          <button
+            onClick={playNext}
+            disabled={previewFile.queueIndex === previewFile.queue.length - 1}
+            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>
-  )
-}
+  </div>
+)}

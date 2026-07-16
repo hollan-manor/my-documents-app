@@ -5,11 +5,7 @@ import { useState, useEffect } from 'react'
 // Placeholder slides — swap these for real photos later.
 // To use real images: put files in /public/ads/ (e.g. ad1.jpg, ad2.jpg),
 // then replace this array with: const SLIDES = ['/ads/ad1.jpg', '/ads/ad2.jpg', ...]
-const PLACEHOLDER_SLIDES = [
-  { color: 'from-indigo-500/40 to-pink-500/40', label: 'Photo 1' },
-  { color: 'from-emerald-500/40 to-cyan-500/40', label: 'Photo 2' },
-  { color: 'from-amber-500/40 to-red-500/40', label: 'Photo 3' },
-]
+const SLIDES = ['/ads/Rotor1.jpg', '/ads/Rotor2.png', '/ads/Rotor3.jpg']
 
 export default function SideDecor() {
   const [slideIndex, setSlideIndex] = useState(0)
