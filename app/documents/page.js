@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info, MessageCircle } from 'lucide-react'
+import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info, MessageCircle, Bot } from 'lucide-react'
 import SideDecor from '../components/SideDecor'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
@@ -416,7 +416,7 @@ const playPrevious = () => {
            className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
           >
            <Bot size={18} />
-         </button>
+          </button>
           <button
             onClick={() => fileInputRef.current.click()}
             disabled={uploading}
@@ -862,77 +862,80 @@ const playPrevious = () => {
       )}
 
       {previewFile && (
-  <div
-    className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-[200]"
-    onClick={() => setPreviewFile(null)}
-  >
-    <div
-      className="max-w-3xl w-full max-h-[85vh] flex flex-col items-center"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="w-full flex items-center justify-between mb-3">
-        <p className="text-white truncate pr-4">
-          {previewFile.name}
-          {previewFile.queue && (
-            <span className="text-white/50 text-sm ml-2">
-              ({previewFile.queueIndex + 1}/{previewFile.queue.length})
-            </span>
-          )}
-        </p>
-        <button
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-[200]"
           onClick={() => setPreviewFile(null)}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
         >
-          <X size={18} />
-        </button>
-      </div>
-
-      {previewFile.kind === 'image' && (
-        <img
-          src={previewFile.url}
-          alt={previewFile.name}
-          className="max-w-full max-h-[75vh] rounded-xl object-contain"
-        />
-      )}
-      {previewFile.kind === 'video' && (
-        <video
-          key={previewFile.url}
-          src={previewFile.url}
-          controls
-          autoPlay
-          onEnded={playNext}
-          className="max-w-full max-h-[75vh] rounded-xl w-full"
-        />
-      )}
-      {previewFile.kind === 'audio' && (
-        <audio
-          key={previewFile.url}
-          src={previewFile.url}
-          controls
-          autoPlay
-          onEnded={playNext}
-          className="w-full"
-        />
-      )}
-
-      {previewFile.queue && previewFile.queue.length > 1 && (
-        <div className="flex items-center gap-4 mt-4">
-          <button
-            onClick={playPrevious}
-            disabled={previewFile.queueIndex === 0}
-            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
+          <div
+            className="max-w-3xl w-full max-h-[85vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            ← Previous
-          </button>
-          <button
-            onClick={playNext}
-            disabled={previewFile.queueIndex === previewFile.queue.length - 1}
-            className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
-          >
-            Next →
-          </button>
+            <div className="w-full flex items-center justify-between mb-3">
+              <p className="text-white truncate pr-4">
+                {previewFile.name}
+                {previewFile.queue && (
+                  <span className="text-white/50 text-sm ml-2">
+                    ({previewFile.queueIndex + 1}/{previewFile.queue.length})
+                  </span>
+                )}
+              </p>
+              <button
+                onClick={() => setPreviewFile(null)}
+                className="w-9 h-9 flex items-center justify-center rounded-full text-white bg-white/10 hover:bg-white/20 transition-all shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {previewFile.kind === 'image' && (
+              <img
+                src={previewFile.url}
+                alt={previewFile.name}
+                className="max-w-full max-h-[75vh] rounded-xl object-contain"
+              />
+            )}
+            {previewFile.kind === 'video' && (
+              <video
+                key={previewFile.url}
+                src={previewFile.url}
+                controls
+                autoPlay
+                onEnded={playNext}
+                className="max-w-full max-h-[75vh] rounded-xl w-full"
+              />
+            )}
+            {previewFile.kind === 'audio' && (
+              <audio
+                key={previewFile.url}
+                src={previewFile.url}
+                controls
+                autoPlay
+                onEnded={playNext}
+                className="w-full"
+              />
+            )}
+
+            {previewFile.queue && previewFile.queue.length > 1 && (
+              <div className="flex items-center gap-4 mt-4">
+                <button
+                  onClick={playPrevious}
+                  disabled={previewFile.queueIndex === 0}
+                  className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
+                >
+                  ← Previous
+                </button>
+                <button
+                  onClick={playNext}
+                  disabled={previewFile.queueIndex === previewFile.queue.length - 1}
+                  className="px-4 py-2 rounded-xl font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all disabled:opacity-30"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
-  </div>
-)}
+  )
+}
