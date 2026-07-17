@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { ArrowLeft, Send, Paperclip, FileText, Download, CheckCheck } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileText, Download, CheckCheck, Mic, Square } from 'lucide-react'
 
 export default function ChatPage() {
   const params = useParams()
@@ -21,6 +21,9 @@ export default function ChatPage() {
   const [pendingFile, setPendingFile] = useState(null)
 
   const messagesEndRef = useRef(null)
+  const [recording, setRecording] = useState(false)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
   const channelRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -166,6 +169,31 @@ export default function ChatPage() {
     setSending(false)
   }
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data)
+      recorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        stream.getTracks().forEach((track) => track.stop())
+        await uploadAndSendFile(new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' }))
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setRecording(true)
+    } catch (err) {
+      alert('Could not access microphone: ' + err.message)
+    }
+  }
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop()
+    setRecording(false)
+  }
   const handleAttachClick = () => {
     fileInputRef.current.click()
   }
@@ -363,6 +391,18 @@ export default function ChatPage() {
           className="w-12 h-12 flex items-center justify-center rounded-full text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all shrink-0 disabled:opacity-40"
         >
           <Paperclip size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={recording ? stopRecording : startRecording}
+          disabled={sending}
+          className={`w-12 h-12 flex items-center justify-center rounded-full transition-all shrink-0 disabled:opacity-40 ${
+            recording
+              ? 'bg-red-600 text-white animate-pulse'
+              : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+          }`}
+        >
+          {recording ? <Square size={18} /> : <Mic size={18} />}
         </button>
         <input
           type="text"
