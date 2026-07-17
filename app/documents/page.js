@@ -217,17 +217,64 @@ export default function DocumentsPage() {
   }
 
   const handleOpen = async (filePath, fileName) => {
-   const kind = getFileKind(fileName)
+    const kind = getFileKind(fileName)
 
-   if (kind === 'video' || kind === 'audio') {
-    // Build a playlist of every playable audio/video file in the current category
-   const queue = files.filter((f) => {
-      const k = getFileKind(f.file_name)
-      return k === 'video' || k === 'audio'
+    if (kind === 'video' || kind === 'audio') {
+      const queue = files.filter((f) => {
+        const k = getFileKind(f.file_name)
+        return k === 'video' || k === 'audio'
+      })
+      const index = queue.findIndex((f) => f.file_path === filePath)
+      await openQueueItem(queue, index)
+      return
+    }
+
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(filePath, 3600)
+
+    if (error) {
+      alert('Could not open file: ' + error.message)
+      return
+    }
+
+    if (kind === 'image') {
+      setPreviewFile({ url: data.signedUrl, kind, name: fileName })
+    } else {
+      window.open(data.signedUrl, '_blank')
+    }
+  }
+
+  const openQueueItem = async (queue, index) => {
+    if (index < 0 || index >= queue.length) return
+
+    const item = queue[index]
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(item.file_path, 3600)
+
+    if (error) {
+      alert('Could not open file: ' + error.message)
+      return
+    }
+
+    setPreviewFile({
+      url: data.signedUrl,
+      kind: getFileKind(item.file_name),
+      name: item.file_name,
+      queue,
+      queueIndex: index,
     })
-   const index = queue.findIndex((f) => f.file_path === filePath)
-    await openQueueItem(queue, index)
-    return
+  }
+
+  const playNext = () => {
+    if (!previewFile?.queue) return
+    openQueueItem(previewFile.queue, previewFile.queueIndex + 1)
+  }
+
+  const playPrevious = () => {
+    if (!previewFile?.queue) return
+    openQueueItem(previewFile.queue, previewFile.queueIndex - 1)
   }
 
    const { data, error } = await supabase.storage
@@ -440,6 +487,13 @@ const playPrevious = () => {
           >
             <MessageCircle size={18} />
             {hasUnreadMessages && <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-red-600 border-2 border-slate-900" />}
+          </button>
+            <button
+            onClick={() => { window.location.href = '/assistant' }}
+            title="Assistant"
+            className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+          >
+            <Bot size={18} />
           </button>
           <button
             onClick={() => setSearchOpen(true)}
@@ -936,6 +990,3 @@ const playPrevious = () => {
           </div>
         </div>
       )}
-    </div>
-  )
-}

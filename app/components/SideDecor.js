@@ -2,17 +2,15 @@
 
 import { useState, useEffect } from 'react'
 
-// Placeholder slides — swap these for real photos later.
-// To use real images: put files in /public/ads/ (e.g. ad1.jpg, ad2.jpg),
-// then replace this array with: const SLIDES = ['/ads/ad1.jpg', '/ads/ad2.jpg', ...]
-const SLIDES = ['/ads/Rotor1.jpg', '/ads/Rotor2.png', '/ads/Rotor3.jpg']
+// Your actual ad photos
+const SLIDES = ['/ads/Rotor1.jpg', '/ads/Rotor2.jpg', '/ads/Rotor3.jpg']
 
 export default function SideDecor() {
   const [slideIndex, setSlideIndex] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSlideIndex((i) => (i + 1) % PLACEHOLDER_SLIDES.length)
+      setSlideIndex((i) => (i + 1) % SLIDES.length)
     }, 4000)
     return () => clearInterval(interval)
   }, [])
@@ -32,18 +30,18 @@ export default function SideDecor() {
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-4 flex-1 flex flex-col items-center justify-center text-center gap-3">
           <p className="text-white/40 text-xs uppercase tracking-wide">Advertisement</p>
           <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden border border-white/10">
-            {PLACEHOLDER_SLIDES.map((slide, i) => (
-              <div
-                key={i}
-                className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${slide.color} transition-opacity duration-700 ${
+            {SLIDES.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`Ad ${i + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
                   i === slideIndex ? 'opacity-100' : 'opacity-0'
                 }`}
-              >
-                <p className="text-white/70 text-sm px-3">{slide.label}</p>
-              </div>
+              />
             ))}
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-              {PLACEHOLDER_SLIDES.map((_, i) => (
+              {SLIDES.map((_, i) => (
                 <span
                   key={i}
                   className={`w-1.5 h-1.5 rounded-full transition-all ${

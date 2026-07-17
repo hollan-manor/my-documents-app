@@ -29,8 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+     lang="en"
+     className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+     suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         <script
@@ -49,17 +50,6 @@ export default function RootLayout({
           }}
         />
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );
