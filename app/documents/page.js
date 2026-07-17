@@ -277,21 +277,6 @@ export default function DocumentsPage() {
     openQueueItem(previewFile.queue, previewFile.queueIndex - 1)
   }
 
-   const { data, error } = await supabase.storage
-    .from('documents')
-    .createSignedUrl(filePath, 3600)
-
-  if (error) {
-    alert('Could not open file: ' + error.message)
-    return
-  }
-
-  if (kind === 'image') {
-    setPreviewFile({ url: data.signedUrl, kind, name: fileName })
-  } else {
-    window.open(data.signedUrl, '_blank')
-  }
-
   const handleDownload = async (filePath, fileName) => {
     const { data, error } = await supabase.storage
       .from('documents')
