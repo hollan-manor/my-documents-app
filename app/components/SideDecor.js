@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 
 // Your actual ad photos
-const SLIDES = ['/ads/Rotor1.jpg', '/ads/Rotor2.jpg', '/ads/Rotor3.jpg']
+const SLIDES = ['/ads/Rotor1.jpg', '/ads/Rotor2.jpg', '/ads/Rotor3.jpg','/ads/Rotor4.jpg','/ads/Rotor5.jpg','/ads/Rotor6.jpg','/ads/Rotor7.jpg']
 
 export default function SideDecor() {
   const [slideIndex, setSlideIndex] = useState(0)
