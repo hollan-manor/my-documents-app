@@ -410,13 +410,6 @@ export default function DocumentsPage() {
       <div className="shrink-0 flex items-center justify-between px-4 md:px-6 py-4 border-b border-white/10 bg-white/10 backdrop-blur-lg">
         <div className="flex items-center gap-2 md:gap-3">
           <button
-           onClick={() => { window.location.href = '/assistant' }}
-           title="Assistant"
-           className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
-          >
-           <Bot size={18} />
-          </button>
-          <button
             onClick={() => fileInputRef.current.click()}
             disabled={uploading}
             className="px-4 md:px-5 py-2.5 md:py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 transition-all shadow-lg disabled:opacity-60 text-sm md:text-base"
