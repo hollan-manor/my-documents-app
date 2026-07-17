@@ -291,39 +291,6 @@ export default function DocumentsPage() {
   } else {
     window.open(data.signedUrl, '_blank')
   }
-}
-
-const openQueueItem = async (queue, index) => {
-  if (index < 0 || index >= queue.length) return
-
-  const item = queue[index]
-  const { data, error } = await supabase.storage
-    .from('documents')
-    .createSignedUrl(item.file_path, 3600)
-
-  if (error) {
-    alert('Could not open file: ' + error.message)
-    return
-  }
-
-  setPreviewFile({
-    url: data.signedUrl,
-    kind: getFileKind(item.file_name),
-    name: item.file_name,
-    queue,
-    queueIndex: index,
-  })
-}
-
-const playNext = () => {
-  if (!previewFile?.queue) return
-  openQueueItem(previewFile.queue, previewFile.queueIndex + 1)
-}
-
-const playPrevious = () => {
-  if (!previewFile?.queue) return
-  openQueueItem(previewFile.queue, previewFile.queueIndex - 1)
-}
 
   const handleDownload = async (filePath, fileName) => {
     const { data, error } = await supabase.storage
@@ -990,3 +957,6 @@ const playPrevious = () => {
           </div>
         </div>
       )}
+    </div>
+  )
+}
