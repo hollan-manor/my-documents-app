@@ -234,24 +234,26 @@ export default function AssistantPage() {
         >
           <Paperclip size={18} />
         </button>
-        <button
-          type="button"
-          onClick={handleMicClick}
-          className={`w-12 h-12 flex items-center justify-center rounded-full transition-all shrink-0 ${
-            listening
-              ? 'bg-red-600 text-white animate-pulse'
-              : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
-          }`}
-        >
-          <Mic size={18} />
-        </button>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message the assistant..."
-          className="flex-1 px-4 py-3 rounded-full bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
+
+        <div className="relative flex-1 min-w-0">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Message the assistant..."
+            className="w-full pl-4 pr-12 py-3 rounded-full bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <button
+            type="button"
+            onClick={handleMicClick}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+              listening ? 'bg-red-600 text-white animate-pulse' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Mic size={16} />
+          </button>
+        </div>
+
         <button
           type="submit"
           disabled={(!input.trim() && !attachedFile) || loading}
