@@ -55,9 +55,12 @@ export default function QuizPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || 'Something went wrong.');
-    return j;
+    const text = await r.text();
+    let j: any;
+     try { j = JSON.parse(text); }
+     catch { throw new Error(`Server error ${r.status}. Check the terminal running npm run dev.`); }
+      if (!r.ok) throw new Error(j.error || 'Something went wrong.');
+     return j;
   };
 
   const start = async () => {
