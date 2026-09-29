@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, X, Inbox, Search, Info, MessageCircle, Bot } from 'lucide-react'
+import { MoreVertical, Eye, Download, Trash2, ChevronDown, LogOut, Share2, Send, Inbox, Search, Info, MessageCircle, Bot, GraduationCap } from 'lucide-react'
 import SideDecor from '../components/SideDecor'
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Education', 'Health', 'Legal', 'Audio', 'Video', 'Other']
@@ -439,6 +439,13 @@ export default function DocumentsPage() {
             className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
           >
             <Bot size={18} />
+          </button>
+                    <button
+            onClick={() => router.push('/quiz')}
+            title="Quiz"
+            className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-xl text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
+          >
+            <GraduationCap size={18} />
           </button>
           <button
             onClick={() => setSearchOpen(true)}
