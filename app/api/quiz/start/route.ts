@@ -81,20 +81,54 @@ async function generatePool(text: string, title: string, level: string): Promise
   console.log('[quiz] reply starts:', raw.slice(0, 300).replace(/\s+/g, ' '));
   if (!raw.trim()) throw new Error('The AI returned an empty reply. Try a different model in LLM_MODEL.');
 
-  return parseQuestions(raw)
-    .filter((x: any) => x?.q && Array.isArray(x.options) && x.options.length === 4 && x.answer >= 0 && x.answer <= 3)
-    .map((x: any, i: number): Q => {
-      // shuffle options so the correct answer isn't always in the same slot
-      const mixed = shuffle(x.options.map((o: string, k: number) => ({ o, ok: k === x.answer })));
-      return {
-        id: `q${i + 1}`,
-        q: x.q,
-        options: mixed.map((m: any) => m.o),
-        answer: mixed.findIndex((m: any) => m.ok),
-        explanation: x.explanation ?? '',
-        topic: x.topic ?? 'General',
-      };
+  const items = parseQuestions(raw);
+  console.log('[quiz] parsed items:', items.length, '| first item keys:', Object.keys(items[0] ?? {}).join(','));
+
+  // some models number answers 1-4 instead of 0-3
+  const oneBased =
+    items.every((x: any) => typeof x?.answer === 'number' && x.answer >= 1) &&
+    items.some((x: any) => x?.answer === 4);
+
+  const out: Q[] = [];
+  for (const x of items) {
+    const question = x?.q ?? x?.question;
+    let opts = x?.options ?? x?.choices;
+    if (opts && !Array.isArray(opts) && typeof opts === 'object') opts = Object.values(opts); // {A:..., B:...}
+    if (!question || !Array.isArray(opts) || opts.length < 3) continue;
+
+    // plain strings, without "A) " style prefixes
+    opts = opts
+      .slice(0, 4)
+      .map((o: any) => (typeof o === 'string' ? o : o?.text ?? String(o)))
+      .map((o: string) => o.replace(/^\s*[A-D][).:\-]\s+/i, ''));
+
+    // work out which option is correct
+    const a = x?.answer ?? x?.correct ?? x?.correct_answer;
+    let idx = -1;
+    if (typeof a === 'number') idx = oneBased ? a - 1 : a;
+    else if (typeof a === 'string') {
+      const t = a.trim();
+      if (/^[A-D]\b/i.test(t)) idx = 'abcd'.indexOf(t[0].toLowerCase());
+      else if (/^\d$/.test(t)) idx = oneBased ? Number(t) - 1 : Number(t);
+      else idx = opts.findIndex((o: string) => o.trim().toLowerCase() === t.toLowerCase());
+    }
+    if (idx < 0 || idx >= opts.length) {
+      console.log('[quiz] skipped a question, unreadable answer:', JSON.stringify(a));
+      continue;
+    }
+
+    // shuffle options so the correct answer isn't always in the same slot
+    const mixed = shuffle(opts.map((o: string, k: number) => ({ o, ok: k === idx })));
+    out.push({
+      id: `q${out.length + 1}`,
+      q: String(question),
+      options: mixed.map((m: any) => m.o),
+      answer: mixed.findIndex((m: any) => m.ok),
+      explanation: x?.explanation ?? '',
+      topic: x?.topic ?? 'General',
     });
+  }
+  return out;
 }
 
 export async function POST(req: NextRequest) {

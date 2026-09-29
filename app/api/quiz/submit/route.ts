@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { admin, getUser } from '../../../lib/quiz-server';
 
-function remarkFor(pct, weak) {
+function remarkFor(pct: number, weak: string[]): string {
   const focus = weak.length ? ` Revisit: ${weak.slice(0, 3).join(', ')}.` : '';
   if (pct === 100) return 'Perfect score. You have this handout down cold.';
   if (pct >= 80) return `Excellent work, you clearly know this material.${focus}`;
@@ -10,19 +10,24 @@ function remarkFor(pct, weak) {
   return `Tough round, and that is fine. Re-read the handout, then try again.${focus}`;
 }
 
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   const user = await getUser(req);
   if (!user) return NextResponse.json({ error: 'Please log in again.' }, { status: 401 });
 
-  const { docId, level, answers } = await req.json();
+  const { docId, level, answers } = (await req.json()) as {
+    docId: string;
+    level: string;
+    answers: Record<string, number | null>;
+  };
 
   const sb = admin();
-  const { data: quiz } = await sb.from('quizzes').select('questions').eq('doc_id', docId).eq('level', level).single();
+  const { data: quiz } = await sb
+    .from('quizzes').select('questions').eq('doc_id', docId).eq('level', level).single();
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
-  const byId = new Map(quiz.questions.map((q) => [q.id, q]));
-  const missedByTopic = {};
-  const review = [];
+  const byId = new Map<string, any>(quiz.questions.map((q: any) => [q.id, q]));
+  const missedByTopic: Record<string, number> = {};
+  const review: any[] = [];
   let score = 0;
 
   for (const [id, pick] of Object.entries(answers)) {
