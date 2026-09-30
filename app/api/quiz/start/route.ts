@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractText, getDocumentProxy } from 'unpdf';
 import { admin, getUser, shuffle } from '../../../lib/quiz-server';
+import { chat } from '../../../lib/llm';
 
-export const maxDuration = 120; // local dev ignores this; on a host, check your plan's limit
+export const maxDuration = 60; // Hobby plan limit
 
 const LEVEL_HINT: Record<string, string> = {
   beginner: 'Recall and basic understanding: definitions, key terms, simple facts.',
@@ -12,123 +13,80 @@ const LEVEL_HINT: Record<string, string> = {
 
 type Q = { id: string; q: string; options: string[]; answer: number; explanation: string; topic: string };
 
-// Tolerant parser: strips code fences and reasoning tags, and keeps every complete question if the reply was cut off
-function parseQuestions(raw: string): any[] {
-  let s = raw
-    .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    .replace(/```json|```/gi, '')
-    .trim();
-  const start = s.indexOf('[');
-  if (start === -1) throw new Error('The AI reply had no question list. Check the terminal for what it sent.');
-  s = s.slice(start);
-
-  const end = s.lastIndexOf(']');
-  if (end !== -1) {
-    try { return JSON.parse(s.slice(0, end + 1)); } catch {}
-  }
-  const lastObj = s.lastIndexOf('}');
-  if (lastObj !== -1) {
-    try { return JSON.parse(s.slice(0, lastObj + 1) + ']'); } catch {}
-  }
-  throw new Error('Could not read the AI reply as JSON.');
-}
-
-async function generatePool(text: string, title: string, level: string): Promise<Q[]> {
-  const apiKey = process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY;
-  if (!apiKey) throw new Error('LLM_API_KEY is missing in .env.local');
-  const baseUrl = (process.env.LLM_BASE_URL || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '');
-  const model = process.env.LLM_MODEL || process.env.NVIDIA_MODEL || 'mistralai/mistral-large-2-instruct';
-
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(100_000),
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.3,
-      max_tokens: 4096,
-      stream: false,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a quiz generator. You never answer or solve the material, you only turn it into ' +
-            'multiple-choice exam questions. Your entire reply is one JSON array and nothing else.',
-        },
-        {
-          role: 'user',
-          content:
-            `STUDY MATERIAL titled "${title}" (do not solve it or summarise it, only quiz on it):\n"""\n${text.slice(0, 12000)}\n"""\n\n` +
-            `TASK: Write 12 multiple-choice questions at this level: ${LEVEL_HINT[level]}\n` +
-            `Rules: use only facts from the material; exactly 4 plausible options; exactly one correct.\n` +
-            `Format: a JSON array where each item is {"q": string, "options": [4 strings], ` +
-            `"answer": 0-3 (index of the correct option), "explanation": one short sentence, "topic": 1-3 words}.\n` +
-            `Your reply MUST start with [ and end with ]. No introduction, no markdown, no code fences.`,
-        },
-      ],
-    }),
-  });
-
-  if (!res.ok) throw new Error(`AI provider error ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
-  const data = await res.json();
-  const choice = data.choices?.[0];
-  const raw: string = choice?.message?.content ?? '';
-  console.log('[quiz] model:', model, '| finish_reason:', choice?.finish_reason, '| reply length:', raw.length);
-  console.log('[quiz] reply starts:', raw.slice(0, 300).replace(/\s+/g, ' '));
-  if (!raw.trim()) throw new Error('The AI returned an empty reply. Try a different model in LLM_MODEL.');
-
-  const items = parseQuestions(raw);
-  console.log('[quiz] parsed items:', items.length, '| first item keys:', Object.keys(items[0] ?? {}).join(','));
-
-  // some models number answers 1-4 instead of 0-3
-  const oneBased =
-    items.every((x: any) => typeof x?.answer === 'number' && x.answer >= 1) &&
-    items.some((x: any) => x?.answer === 4);
-
+// Reads "Q: / A) B) C) D) / ANSWER: / WHY: / TOPIC:" blocks. Anything that is not a complete block is skipped.
+function parseQuestions(raw: string): Q[] {
+  const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/\*\*|__|`/g, '');
+  const chunks = clean.split(/^\s*Q(?:uestion)?\s*\d*\s*[:.)]\s*/gim).slice(1);
   const out: Q[] = [];
-  for (const x of items) {
-    const question = x?.q ?? x?.question;
-    let opts = x?.options ?? x?.choices;
-    if (opts && !Array.isArray(opts) && typeof opts === 'object') opts = Object.values(opts); // {A:..., B:...}
-    if (!question || !Array.isArray(opts) || opts.length < 3) continue;
 
-    // plain strings, without "A) " style prefixes
-    opts = opts
-      .slice(0, 4)
-      .map((o: any) => (typeof o === 'string' ? o : o?.text ?? String(o)))
-      .map((o: string) => o.replace(/^\s*[A-D][).:\-]\s+/i, ''));
+  for (const c of chunks) {
+    const lines = c.split('\n').map((l) => l.trim()).filter(Boolean);
+    const firstOpt = lines.findIndex((l) => /^[A-D][).:]\s*\S/.test(l));
+    if (firstOpt < 1) continue;
 
-    // work out which option is correct
-    const a = x?.answer ?? x?.correct ?? x?.correct_answer;
-    let idx = -1;
-    if (typeof a === 'number') idx = oneBased ? a - 1 : a;
-    else if (typeof a === 'string') {
-      const t = a.trim();
-      if (/^[A-D]\b/i.test(t)) idx = 'abcd'.indexOf(t[0].toLowerCase());
-      else if (/^\d$/.test(t)) idx = oneBased ? Number(t) - 1 : Number(t);
-      else idx = opts.findIndex((o: string) => o.trim().toLowerCase() === t.toLowerCase());
+    const opts: string[] = [];
+    for (const l of lines.slice(firstOpt)) {
+      const m = l.match(/^([A-D])[).:]\s*(.+)$/);
+      if (m && opts.length < 4 && 'ABCD'.indexOf(m[1]) === opts.length) opts.push(m[2].trim());
     }
-    if (idx < 0 || idx >= opts.length) {
-      console.log('[quiz] skipped a question, unreadable answer:', JSON.stringify(a));
-      continue;
-    }
+    const ans = c.match(/^\s*ANSWER\s*[:\-]\s*\(?([A-D])/im);
+    if (opts.length !== 4 || !ans) continue;
+
+    const idx = 'ABCD'.indexOf(ans[1].toUpperCase());
+    const why = c.match(/^\s*(?:WHY|EXPLANATION)\s*:\s*(.+)$/im);
+    const topic = c.match(/^\s*TOPIC\s*:\s*(.+)$/im);
 
     // shuffle options so the correct answer isn't always in the same slot
-    const mixed = shuffle(opts.map((o: string, k: number) => ({ o, ok: k === idx })));
+    const mixed = shuffle(opts.map((o, k) => ({ o, ok: k === idx })));
     out.push({
       id: `q${out.length + 1}`,
-      q: String(question),
-      options: mixed.map((m: any) => m.o),
-      answer: mixed.findIndex((m: any) => m.ok),
-      explanation: x?.explanation ?? '',
-      topic: x?.topic ?? 'General',
+      q: lines.slice(0, firstOpt).join(' '),
+      options: mixed.map((m) => m.o),
+      answer: mixed.findIndex((m) => m.ok),
+      explanation: why ? why[1].trim() : '',
+      topic: topic ? topic[1].trim() : 'General',
     });
   }
   return out;
+}
+
+async function generatePool(text: string, title: string, level: string): Promise<Q[]> {
+  const { text: reply, model, finish } = await chat(
+    [
+      {
+        role: 'system',
+        content:
+          'You are a quiz generator. You never solve or summarise the material, you only write ' +
+          'multiple-choice questions about it. You reply with the questions only, no introduction.',
+      },
+      {
+        role: 'user',
+        content:
+          `STUDY MATERIAL titled "${title}":\n"""\n${text.slice(0, 12000)}\n"""\n\n` +
+          `Write 12 multiple-choice questions at this level: ${LEVEL_HINT[level]}\n` +
+          `Use only facts from the material. Exactly 4 plausible options, exactly one correct.\n` +
+          `Use EXACTLY this format for every question, with a line containing only --- between questions:\n\n` +
+          `Q: the question\nA) option\nB) option\nC) option\nD) option\nANSWER: one letter (A, B, C or D)\n` +
+          `WHY: one short sentence\nTOPIC: 1-3 words\n---\n\n` +
+          `Start your reply immediately with "Q:".`,
+      },
+    ],
+    { maxTokens: 4096, temperature: 0.3, timeoutMs: 55_000 }
+  );
+
+  console.log('[quiz] model:', model, '| finish_reason:', finish, '| reply length:', reply.length);
+  console.log('[quiz] reply starts:', reply.slice(0, 200).replace(/\s+/g, ' '));
+
+  const pool = parseQuestions(reply);
+  console.log('[quiz] parsed questions:', pool.length);
+  if (pool.length === 0) {
+    throw new Error(
+      finish === 'length'
+        ? 'This model used its whole budget "thinking" before answering. Set LLM_MODEL to a non-reasoning instruct model.'
+        : 'No questions found in the AI reply. Check the terminal to see what it sent.'
+    );
+  }
+  return pool;
 }
 
 export async function POST(req: NextRequest) {
@@ -166,7 +124,6 @@ export async function POST(req: NextRequest) {
       }
 
       const pool = await generatePool(text, doc.title, level);
-      console.log('[quiz] valid questions generated:', pool.length);
       if (pool.length < 5) throw new Error('The AI returned too few valid questions. Try again.');
 
       const ins = await sb

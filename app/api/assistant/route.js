@@ -1,31 +1,33 @@
+import { NextResponse } from 'next/server'
+import { chat } from '../../lib/llm'
+import { getUser } from '../../lib/quiz-server'
+
+export const maxDuration = 60
+
+const SYSTEM =
+  'You are the assistant inside E-Docs Access, a document storage app with categories ' +
+  '(Personal, Work, Finance, Education, Health, Legal, Audio, Video, Other), an inbox for shared files, and messaging. ' +
+  'Answer clearly and briefly. If you do not know something about the user\'s own files, say so instead of guessing.'
+
 export async function POST(req) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Please log in again.' }, { status: 401 })
+
   try {
     const { messages } = await req.json()
+    const history = (Array.isArray(messages) ? messages : [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .slice(-20)
+    if (history.length === 0) return NextResponse.json({ error: 'Empty message.' }, { status: 400 })
 
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta/llama-3.1-8b-instruct', // adjust to match your key's available model
-        messages,
-        max_tokens: 512,
-        temperature: 0.7,
-      }),
+    const { text } = await chat([{ role: 'system', content: SYSTEM }, ...history], {
+      maxTokens: 1024,
+      temperature: 0.6,
+      timeoutMs: 55000,
     })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      return Response.json({ error: errText }, { status: response.status })
-    }
-
-    const data = await response.json()
-    const reply = data.choices?.[0]?.message?.content || 'No response received.'
-
-    return Response.json({ reply })
-  } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ reply: text || 'No reply came back. Try again.' })
+  } catch (e) {
+    console.error('[assistant] failed:', e)
+    return NextResponse.json({ error: e.message || 'Assistant failed.' }, { status: 500 })
   }
 }
