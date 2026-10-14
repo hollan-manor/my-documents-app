@@ -114,7 +114,7 @@ export default function QuizPage() {
 
   return (
     <main className={s.wrap}>
-      <button className={s.back} onClick={() => router.push('/')}>← Back to documents</button>
+      <button className={s.back} onClick={() => router.push('/documents')}>← Back to documents</button>
 
       {stage === 'setup' && (
         <section className={s.panel}>
